@@ -25,12 +25,12 @@ Building this system end-to-end demonstrates the ability to design software arou
 
 ## The People of the Business
 
-| Role | Who They Are | What They Do |
-|---|---|---|
-| **Customer** | The public. Anyone visiting the bakery's storefront. | Browse products, place orders, pay, track deliveries, leave reviews. |
-| **Admin** | Bakery owner / manager. | Runs the business: manages products, staff, orders, promotions, and reviews performance. |
-| **Baker** | Kitchen staff. | Prepares the food behind each order, marks orders ready. |
-| **Delivery Employee** | Drivers / couriers. | Delivers finished orders to customers, updates delivery progress. |
+| Role                  | Who They Are                                         | What They Do                                                                             |
+| --------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Customer**          | The public. Anyone visiting the bakery's storefront. | Browse products, place orders, pay, track deliveries, leave reviews.                     |
+| **Admin**             | Bakery owner / manager.                              | Runs the business: manages products, staff, orders, promotions, and reviews performance. |
+| **Baker**             | Kitchen staff.                                       | Prepares the food behind each order, marks orders ready.                                 |
+| **Delivery Employee** | Drivers / couriers.                                  | Delivers finished orders to customers, updates delivery progress.                        |
 
 Each role only sees and does what's relevant to their job. A baker never sees payment details. A delivery employee never sees the full customer database. An admin sees everything, because they're accountable for the whole business.
 
@@ -91,12 +91,14 @@ These are the non-negotiable rules the system must always enforce, regardless of
 ## Payments & Delivery
 
 **Payment methods:**
+
 - Online payment
 - Cash on Delivery (COD)
 
 **Payment states:** Pending → Paid / Failed / Refunded
 
 **Delivery methods:**
+
 - Home delivery
 - Store pickup
 
@@ -106,7 +108,7 @@ Keeping these as explicit, separate concerns (rather than folding them into "ord
 
 ## Roadmap Philosophy
 
-Everything above describes the *finished* business. Building it all at once is how projects stall out. Instead, this system is built in **three phases**, each one a fully working, demonstrable product on its own — not a fragment that only makes sense once everything else exists.
+Everything above describes the _finished_ business. Building it all at once is how projects stall out. Instead, this system is built in **three phases**, each one a fully working, demonstrable product on its own — not a fragment that only makes sense once everything else exists.
 
 The guiding rule for phase order: **build what makes the business function first, then what makes it convenient, then what makes it competitive.**
 
@@ -117,7 +119,9 @@ The guiding rule for phase order: **build what makes the business function first
 **Goal:** A working bakery. Someone can create an account, browse real products, order them, and the order gets acknowledged. If the project stopped after this phase, it would still be a legitimate, demoable product.
 
 **In scope:**
+
 - Authentication & authorization (customer, admin, baker, delivery roles)
+- Sign in with Google (OAuth), alongside standard email/password — same account system, just a second way in
 - Product management (admin: create/update/delete; everyone: browse/search/filter)
 - Category management
 - Shopping cart (add, update, remove items)
@@ -126,6 +130,7 @@ The guiding rule for phase order: **build what makes the business function first
 - Basic inventory tracking (stock decreases on order, blocked when out of stock)
 
 **Explicitly out of scope for Phase 1:**
+
 - Payments (orders can be created without a real payment step yet — assume COD by default)
 - Delivery assignment and tracking
 - Reviews, wishlist, coupons, dashboards, audit logs
@@ -139,7 +144,9 @@ The guiding rule for phase order: **build what makes the business function first
 **Goal:** Money and delivery. Phase 1 proved the business works; Phase 2 makes it real — customers can actually pay, and their food actually reaches them.
 
 **In scope:**
-- Payment integration: online payment + COD, with proper payment status tracking (Pending / Paid / Failed / Refunded)
+
+- Real payment gateway integration (e.g. Stripe/PayPal) for online payment, plus COD, with proper payment status tracking (Pending / Paid / Failed / Refunded)
+- Webhook handling so payment confirmation comes from the gateway itself, not just trusted from the client
 - Enforcing the business rule that online-paid orders require confirmed payment before moving forward
 - Delivery module: admin assigns a delivery employee to an order
 - Delivery employee workflow: view assigned deliveries, update progress, mark delivered
@@ -156,9 +163,10 @@ The guiding rule for phase order: **build what makes the business function first
 **Goal:** The features that make the business easier to run and more competitive — not required to function, but what separates a functional system from a well-run one.
 
 **In scope:**
+
 - Product reviews & ratings (restricted to verified purchasers)
-- Wishlist
-- Promotional coupons
+- Wishlist (save products, move to cart later)
+- Promotional coupons (code validation, expiry, usage limits, applied at checkout before payment)
 - Seasonal offers
 - Admin dashboard & business statistics (sales over time, best-selling products, order volume, etc.)
 - Audit logs for administrative actions
@@ -206,11 +214,11 @@ Paid     →  Refunded
 
 ## Summary Table — Phases at a Glance
 
-| Phase | Focus | Delivers |
-|---|---|---|
-| **1 — Core Business** | Can the bakery take and prepare an order at all? | Auth, products, cart, orders, baker workflow, basic inventory |
-| **2 — Complete the Transaction** | Can the bakery get paid and get food to the customer? | Payments, delivery assignment & tracking, cancellations |
-| **3 — Growth & Insight** | Can the bakery grow and understand itself? | Reviews, wishlist, coupons, dashboard, audit logs, notifications |
+| Phase                            | Focus                                                 | Delivers                                                                             |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **1 — Core Business**            | Can the bakery take and prepare an order at all?      | Auth (incl. Google sign-in), products, cart, orders, baker workflow, basic inventory |
+| **2 — Complete the Transaction** | Can the bakery get paid and get food to the customer? | Payment gateway integration, delivery assignment & tracking, cancellations           |
+| **3 — Growth & Insight**         | Can the bakery grow and understand itself?            | Reviews, wishlist, coupons, dashboard, audit logs, notifications                     |
 
 ---
 

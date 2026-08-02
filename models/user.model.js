@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
-const userShcema = new mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -15,12 +16,9 @@ const userShcema = new mongoose.Schema(
     },
     password: {
       type: String,
-      // required only for local accounts - Google accounts won't have one
-      required: function () {
-        return this.provider === "local";
-      },
-      select: false, // never raturn pass by default in queries
+      minLength: 6,
     },
+
     provider: {
       type: String,
       enum: ["local", "google"],
@@ -38,14 +36,13 @@ const userShcema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      trime: true,
+      trim: true,
     },
     address: {
       governorate: String,
       city: String,
       street: String,
       zipCode: String,
-      postalCode: String,
     },
     avatarUrl: {
       type: String,
@@ -59,4 +56,9 @@ const userShcema = new mongoose.Schema(
   { timestamps: true },
 );
 
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+
+  this.password = await bcrypt.hash(this.password, 10);
+});
 module.exports = mongoose.model("User", userSchema);

@@ -11,6 +11,8 @@ const mongoose = require("mongoose");
 const ApiError = require("./utils/apiError");
 const globalError = require("./middlewares/globalErrorMiddleware");
 const dbConnection = require("./database");
+//routes
+const userRoute = require("./routes/user.route");
 
 //db connection
 dbConnection();
@@ -32,6 +34,7 @@ if (process.env.NODE_ENV === "development") {
 app.get("/", (req, res, next) => {
   res.send("test, route is mounted");
 });
+app.use("/api/v1/users", userRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

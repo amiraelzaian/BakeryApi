@@ -13,6 +13,7 @@ const globalError = require("./middlewares/globalErrorMiddleware");
 const dbConnection = require("./database");
 //routes
 const userRoute = require("./routes/user.route");
+const authRoute = require("./routes/auth.route");
 
 //db connection
 dbConnection();
@@ -35,6 +36,7 @@ app.get("/", (req, res, next) => {
   res.send("test, route is mounted");
 });
 app.use("/api/v1/users", userRoute);
+app.use("/api/v1/auth", authRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

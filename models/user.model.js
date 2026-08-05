@@ -12,11 +12,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Email is required"],
       unique: [true, "Email must be unique -Eamil is already in use"],
+      lowercase: true,
       trim: true,
     },
     password: {
       type: String,
       minLength: 6,
+      required: function () {
+        return this.provider === "local";
+      },
     },
 
     provider: {
@@ -57,6 +61,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function () {
+  if (this.provider === "google") return;
   if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 10);

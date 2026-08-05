@@ -14,17 +14,28 @@ const {
   deleteUserValidator,
   changeUserPasswordValidator,
 } = require("../validators/user.validator");
+const { protect, allowedTo } = require("../controllers/auth.controller");
 
 const router = express.Router();
+router.use(protect);
 
-router.route("/").post(createUserValidator, createUser).get(getAllUsers);
+router
+  .route("/")
+  .post(allowedTo("admin"), createUserValidator, createUser)
+  .get(allowedTo("admin"), getAllUsers);
+
 router
   .route("/:id")
-  .get(getUserValidator, getUser)
-  .patch(updateUserValidator, updateUser)
-  .delete(deleteUserValidator, deleteUser);
+  .get(
+    allowedTo("admin", "baker", "delivery", "customer"),
+    getUserValidator,
+    getUser,
+  )
+  .patch(allowedTo("admin", "customer"), updateUserValidator, updateUser)
+  .delete(allowedTo("admin"), deleteUserValidator, deleteUser);
+
 router
   .route("/change-user-pass/:id")
-  .patch(changeUserPasswordValidator, changeUserPassword);
+  .patch(allowedTo("admin"), changeUserPasswordValidator, changeUserPassword);
 
 module.exports = router;

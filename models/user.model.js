@@ -22,7 +22,13 @@ const userSchema = new mongoose.Schema(
         return this.provider === "local";
       },
     },
-
+    passwordChangedAT: Date,
+    passwordResetCode: String,
+    passwordResetExpires: Date,
+    passwordResetVerified: {
+      type:Boolean,
+      default:false,
+    },
     provider: {
       type: String,
       enum: ["local", "google"],

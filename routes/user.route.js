@@ -6,6 +6,10 @@ const {
   updateUser,
   deleteUser,
   changeUserPassword,
+  getLoggedUserData,
+  updateLoggedUserData,
+  deleteLoggedUserData,
+  reverseUserActivation,
 } = require("../controllers/user.controller");
 const {
   createUserValidator,
@@ -18,6 +22,10 @@ const { protect, allowedTo } = require("../controllers/auth.controller");
 
 const router = express.Router();
 router.use(protect);
+router.route("/getMe").get(getLoggedUserData, getUser);
+router.route("/updateMe").patch(updateUserValidator, updateLoggedUserData);
+router.route("/deleteMe").delete(deleteLoggedUserData);
+router.route("/activation").patch(updateUserValidator, reverseUserActivation);
 
 router
   .route("/")

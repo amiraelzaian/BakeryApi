@@ -22,12 +22,12 @@ const userSchema = new mongoose.Schema(
         return this.provider === "local";
       },
     },
-    passwordChangedAT: Date,
+    passwordChangedAt: Date,
     passwordResetCode: String,
     passwordResetExpires: Date,
     passwordResetVerified: {
-      type:Boolean,
-      default:false,
+      type: Boolean,
+      default: false,
     },
     provider: {
       type: String,

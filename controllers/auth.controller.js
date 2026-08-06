@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const { OAuth2Client } = require("google-auth-library");
 
 // @desc   Signnup
 // @route  post /api/v1/auth/signup
@@ -180,4 +181,39 @@ exports.resetPassword = async (req, res, next) => {
   const token = generateToken(user._id);
 
   res.status(200).json({ status: "success", token });
+};
+// @desc   login by google
+// @route  post /api/v1/auth/googleAuth
+// @access Public
+exports.googleLogin = async (req, res, next) => {
+  const { credential } = req.body;
+
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+
+  const { email, name, picture, sub: googleId } = payload;
+
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    user = await User.create({
+      name,
+      email,
+      googleId,
+      profileImg: picture,
+      proivder: "google",
+    });
+  }
+
+  const token = generateToken(user._id);
+
+  res.status(200).json({
+    status: "success",
+    data: user,
+    token,
+  });
 };

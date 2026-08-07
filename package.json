@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "bullmq": "^6.0.8",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -23,7 +24,8 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.4",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "redis": "^6.2.0"
   },
   "devDependencies": {
     "morgan": "^1.11.0",

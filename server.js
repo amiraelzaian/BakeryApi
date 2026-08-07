@@ -3,10 +3,10 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require("dotenv").config();
 const cors = require("cors");
-
 const path = require("path");
 const morgan = require("morgan");
 const express = require("express");
+const { connectRedis } = require("./redis");
 const mongoose = require("mongoose");
 const ApiError = require("./utils/apiError");
 const globalError = require("./middlewares/globalErrorMiddleware");
@@ -19,6 +19,7 @@ const authRoute = require("./routes/auth.route");
 dbConnection();
 //express app
 const app = express();
+connectRedis();
 
 //enable other domains to access your app
 app.use(cors());

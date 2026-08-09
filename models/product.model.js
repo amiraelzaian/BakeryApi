@@ -4,8 +4,9 @@ const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Proudct name is  required"],
+      required: [true, "Product name is  required"],
       trim: true,
+      unique: true,
     },
     description: {
       type: String,
@@ -24,7 +25,6 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.ObjectId,
       ref: "Category",
       required: [true, "Product must belong to Category"],
-      required: true,
     },
     stockQuantity: {
       type: Number,
@@ -32,7 +32,7 @@ const productSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
-    isAvaliable: {
+    isAvailable: {
       type: Boolean,
       default: true,
     },
@@ -46,9 +46,7 @@ const productSchema = new mongoose.Schema(
 );
 
 productSchema.pre("save", function () {
-  if (this.stockQuantity <= 0) {
-    this.isAvailable = false;
-  }
+  this.isAvailable = this.stockQuantity > 0;
 });
 
-module.exports.mongoose.model("Product", productSchema);
+module.exports = mongoose.model("Product", productSchema);

@@ -36,6 +36,11 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    soldQuantity: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     createdBy: {
       type: mongoose.Schema.ObjectId,
       ref: "User",

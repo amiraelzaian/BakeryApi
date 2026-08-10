@@ -1,8 +1,13 @@
 class ApiFeatures {
-  constructor(mongooseQuery, queryString) {
+  constructor(mongooseQuery, queryString, baseFilter = {}) {
     this.mongooseQuery = mongooseQuery;
     this.queryString = queryString;
+    this.baseFilter = baseFilter;
   }
+
+  // =========================
+  // FILTER
+  // =========================
 
   filter() {
     const queryStringObj = { ...this.queryString };
@@ -15,10 +20,21 @@ class ApiFeatures {
 
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    this.mongooseQuery = this.mongooseQuery.find(JSON.parse(queryStr));
+    const queryFilter = JSON.parse(queryStr);
+
+    // Combine protected filter with user filter
+    // we put base filter after the query filter to make base filter win and wasn't be overwritten by qeury filter (wrriten by user)
+    this.mongooseQuery = this.mongooseQuery.find({
+      ...queryFilter,
+      ...this.baseFilter,
+    });
 
     return this;
   }
+
+  // =========================
+  // SORT
+  // =========================
 
   sort() {
     if (this.queryString.sort) {
@@ -26,11 +42,15 @@ class ApiFeatures {
 
       this.mongooseQuery = this.mongooseQuery.sort(sortBy);
     } else {
-      this.mongooseQuery = this.mongooseQuery.sort("createdAt");
+      this.mongooseQuery = this.mongooseQuery.sort("-createdAt");
     }
 
     return this;
   }
+
+  // =========================
+  // LIMIT FIELDS
+  // =========================
 
   limitFields() {
     if (this.queryString.fields) {
@@ -44,49 +64,60 @@ class ApiFeatures {
     return this;
   }
 
+  // =========================
+  // SEARCH
+  // =========================
+
   search(modelName) {
-    let query = {};
-
-    if (this.queryString.keyword) {
-      if (modelName === "User") {
-        query = {
-          $or: [
-            {
-              name: {
-                $regex: this.queryString.keyword,
-                $options: "i",
-              },
-            },
-          ],
-        };
-      } else {
-        query = {
-          $or: [
-            {
-              name: {
-                $regex: this.queryString.keyword,
-                $options: "i",
-              },
-            },
-            {
-              description: {
-                $regex: this.queryString.keyword,
-                $options: "i",
-              },
-            },
-          ],
-        };
-      }
-
-      this.mongooseQuery = this.mongooseQuery.and([query]);
+    if (!this.queryString.keyword) {
+      return this;
     }
+
+    let query;
+
+    if (modelName === "User") {
+      query = {
+        $or: [
+          {
+            name: {
+              $regex: this.queryString.keyword,
+              $options: "i",
+            },
+          },
+        ],
+      };
+    } else {
+      query = {
+        $or: [
+          {
+            name: {
+              $regex: this.queryString.keyword,
+              $options: "i",
+            },
+          },
+          {
+            description: {
+              $regex: this.queryString.keyword,
+              $options: "i",
+            },
+          },
+        ],
+      };
+    }
+
+    this.mongooseQuery = this.mongooseQuery.and([query]);
 
     return this;
   }
 
+  // =========================
+  // PAGINATION
+  // =========================
+
   paginate(countDocuments) {
-    const page = +this.queryString.page || 1;
-    const limit = +this.queryString.limit || 20;
+    const page = Math.max(+this.queryString.page || 1, 1);
+
+    const limit = Math.min(Math.max(+this.queryString.limit || 20, 1), 100);
 
     const skip = (page - 1) * limit;
     const endIndex = page * limit;

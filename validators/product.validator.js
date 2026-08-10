@@ -32,8 +32,7 @@ exports.createProductValidator = [
     .withMessage("Description must not exceed 400 characters"),
 
   check("price")
-    .notEmpty()
-    .withMessage("Product price is required")
+    .optional()
     .isFloat({ min: 0, max: 50000 })
     .withMessage("Price must be between 0 and 50000"),
 
@@ -56,6 +55,34 @@ exports.createProductValidator = [
 
       if (!category.isActive) {
         throw new Error("Cannot create product under an inactive category");
+      }
+
+      return true;
+    }),
+
+  check("sizes")
+    .optional()
+    .isArray()
+    .withMessage("Sizes must be an array")
+    .custom((sizes) => {
+      const allowedSizes = ["small", "medium", "large"];
+
+      const names = sizes.map((size) => size.name);
+
+      const valid = sizes.every(
+        (size) =>
+          allowedSizes.includes(size.name) &&
+          typeof size.price === "number" &&
+          size.price >= 0 &&
+          size.price <= 50000,
+      );
+
+      if (!valid) {
+        throw new Error("Each size must have a valid name and price");
+      }
+
+      if (new Set(names).size !== names.length) {
+        throw new Error("Duplicate product sizes are not allowed");
       }
 
       return true;
@@ -133,6 +160,34 @@ exports.updateProductValidator = [
 
       if (!category.isActive) {
         throw new Error("Cannot update product to an inactive category");
+      }
+
+      return true;
+    }),
+
+  check("sizes")
+    .optional()
+    .isArray()
+    .withMessage("Sizes must be an array")
+    .custom((sizes) => {
+      const allowedSizes = ["small", "medium", "large"];
+
+      const names = sizes.map((size) => size.name);
+
+      const valid = sizes.every(
+        (size) =>
+          allowedSizes.includes(size.name) &&
+          typeof size.price === "number" &&
+          size.price >= 0 &&
+          size.price <= 50000,
+      );
+
+      if (!valid) {
+        throw new Error("Each size must have a valid name and price");
+      }
+
+      if (new Set(names).size !== names.length) {
+        throw new Error("Duplicate product sizes are not allowed");
       }
 
       return true;

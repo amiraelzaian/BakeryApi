@@ -7,24 +7,46 @@ const cartSchema = new mongoose.Schema(
         productId: {
           type: mongoose.Schema.ObjectId,
           ref: "Product",
+          required: true,
         },
+
         quantity: {
           type: Number,
           default: 1,
+          min: 1,
         },
+
         size: {
           type: String,
           enum: ["small", "medium", "large"],
           required: true,
         },
-        price: Number,
+
+        price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
       },
     ],
-    totalCartPrice: Number,
-    totalPriceAfterDiscount: Number,
+
+    totalCartPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalPriceAfterDiscount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     userId: {
       type: mongoose.Schema.ObjectId,
       ref: "User",
+      required: true,
+      unique: true,
     },
   },
   { timestamps: true },

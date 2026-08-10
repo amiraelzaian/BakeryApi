@@ -16,6 +16,7 @@ const userRoute = require("./routes/user.route");
 const authRoute = require("./routes/auth.route");
 const categoryRoute = require("./routes/category.route");
 const productRoute = require("./routes/product.route");
+const cartRoute = require("./routes/cart.route");
 
 //db connection
 dbConnection();
@@ -42,6 +43,7 @@ app.use("/api/v1/users", userRoute);
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/categories", categoryRoute);
 app.use("/api/v1/products", productRoute);
+app.use("/api/v1/cart", cartRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

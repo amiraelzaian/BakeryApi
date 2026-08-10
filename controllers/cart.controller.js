@@ -10,6 +10,7 @@ const calcTotalPrice = (cart) => {
     totalPrice += item.quantity * item.price;
   });
 
+  // Remove previous discount whenever cart changes
   cart.totalPriceAfterDiscount = undefined;
 
   return totalPrice;
@@ -33,9 +34,38 @@ exports.addProductToCart = async (req, res, next) => {
     return next(new ApiError("Product is currently unavailable", 400));
   }
 
-  // 3- Check whether requested size exists
-  if (!product.sizes.includes(size)) {
-    return next(new ApiError(`Product is not available in ${size} size`, 400));
+  // 3- Determine price based on product sizes
+  let selectedPrice = product.price;
+
+  // Product has sizes
+  if (product.sizes && product.sizes.length > 0) {
+    // Size is required when product has sizes
+    if (!size) {
+      return next(new ApiError("Size is required for this product", 400));
+    }
+
+    // Find selected size
+    const selectedSize = product.sizes.find((item) => item.name === size);
+
+    if (!selectedSize) {
+      return next(
+        new ApiError(`Product is not available in ${size} size`, 400),
+      );
+    }
+
+    // Use price of selected size
+    selectedPrice = selectedSize.price;
+  } else {
+    // Product has no sizes
+    // Therefore size must not be provided
+    if (size) {
+      return next(new ApiError("This product does not have sizes", 400));
+    }
+
+    // Make sure product has a price
+    if (product.price === null || product.price === undefined) {
+      return next(new ApiError("Product price is not configured", 400));
+    }
   }
 
   // 4- Get cart for logged user
@@ -51,8 +81,8 @@ exports.addProductToCart = async (req, res, next) => {
       cartItems: [
         {
           productId: product._id,
-          size,
-          price: product.price,
+          size: size || undefined,
+          price: selectedPrice,
           quantity: 1,
         },
       ],
@@ -76,8 +106,8 @@ exports.addProductToCart = async (req, res, next) => {
       // product does not exist in cart -> push product to cart
       cart.cartItems.push({
         productId: product._id,
-        size,
-        price: product.price,
+        size: size || undefined,
+        price: selectedPrice,
         quantity: 1,
       });
     }
@@ -105,7 +135,7 @@ exports.getLoggedUserCart = async (req, res, next) => {
     userId: req.user._id,
   }).populate({
     path: "cartItems.productId",
-    select: "name price imageUrl sizes stockQuantity isAvailable",
+    select: "name price imageUrl stockQuantity isAvailable",
   });
 
   if (!cart) {
@@ -210,6 +240,12 @@ exports.updateCartItemQuantity = async (req, res, next) => {
     return next(new ApiError("Product not found", 404));
   }
 
+  // Check product availability
+  if (!product.isAvailable || product.stockQuantity <= 0) {
+    return next(new ApiError("Product is currently unavailable", 400));
+  }
+
+  // Prevent quantity from exceeding stock
   if (quantity > product.stockQuantity) {
     return next(
       new ApiError(`Only ${product.stockQuantity} items are available`, 400),

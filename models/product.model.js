@@ -28,13 +28,13 @@ const productSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
-      maxlength: 400,
     },
 
-    // Used when the product does NOT have different prices by size
+    // Used when the product has NO sizes
     price: {
       type: Number,
       min: 0,
+      default: null,
     },
 
     imageUrl: {
@@ -48,6 +48,7 @@ const productSchema = new mongoose.Schema(
       required: [true, "Product must belong to Category"],
     },
 
+    // Used when the product HAS sizes
     sizes: {
       type: [productSizeSchema],
       default: [],

@@ -19,9 +19,10 @@ const cartSchema = new mongoose.Schema(
         size: {
           type: String,
           enum: ["small", "medium", "large"],
-          required: true,
+          required: false,
         },
 
+        // Price at the time the item was added
         price: {
           type: Number,
           required: true,
@@ -33,13 +34,11 @@ const cartSchema = new mongoose.Schema(
     totalCartPrice: {
       type: Number,
       default: 0,
-      min: 0,
     },
 
     totalPriceAfterDiscount: {
       type: Number,
-      default: 0,
-      min: 0,
+      default: null,
     },
 
     userId: {

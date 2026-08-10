@@ -28,8 +28,7 @@ exports.addProductToCartValidator = [
     }),
 
   check("size")
-    .notEmpty()
-    .withMessage("Product size is required")
+    .optional()
     .isIn(["small", "medium", "large"])
     .withMessage("Size must be small, medium, or large"),
 

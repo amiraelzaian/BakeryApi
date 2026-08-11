@@ -1,6 +1,7 @@
 const ApiError = require("../utils/apiError");
 const Cart = require("../models/cart.model.js");
 const Product = require("../models/product.model.js");
+const Coupon = require("../models/coupon.model.js");
 
 // calculate total price
 const calcTotalPrice = (cart) => {
@@ -269,4 +270,28 @@ exports.updateCartItemQuantity = async (req, res, next) => {
 };
 
 // not implemented yet as we don't have coupon model yet
-exports.applyCoupon = async (req, res, next) => {};
+exports.applyCoupon = async (req, res, next) => {
+  const coupon = await Coupon.findOne({
+    name: req.body.coupon,
+    expire: { $gt: Date.now() },
+  });
+  if (!coupon) return next(new ApiError("Coupon is expired or invalid", 404));
+
+  const cart = await Cart.findOne({ userId: req.user._id });
+  if (!cart) return next(new ApiError("There is no cart for this user"));
+  let totalPrice = cart.totalCartPrice;
+
+  const totalPriceAfterCoupon = (
+    totalPrice -
+    totalPrice * (coupon.discount / 100)
+  ).toFixed(2);
+
+  cart.totalPriceAfterDiscount = totalPriceAfterCoupon;
+  await cart.save();
+
+  res.status(200).json({
+    status: "success",
+    result: cart.cartItems.length,
+    data: cart,
+  });
+};

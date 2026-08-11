@@ -19,7 +19,7 @@ const {
 
 const router = express.Router();
 
-router.use(protect, allowedTo("admin"));
+//router.use(protect, allowedTo("admin"));
 
 router.route("/").get(getAllCoupons).post(createCouponValidator, createCoupon);
 

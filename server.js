@@ -18,6 +18,7 @@ const categoryRoute = require("./routes/category.route");
 const productRoute = require("./routes/product.route");
 const cartRoute = require("./routes/cart.route");
 const couponRoute = require("./routes/coupon.route");
+const orderRoute = require("./routes/order.route");
 
 //db connection
 dbConnection();
@@ -46,6 +47,7 @@ app.use("/api/v1/categories", categoryRoute);
 app.use("/api/v1/products", productRoute);
 app.use("/api/v1/cart", cartRoute);
 app.use("/api/v1/coupons", couponRoute);
+app.use("/api/v1/orders", orderRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

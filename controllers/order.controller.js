@@ -63,6 +63,7 @@ exports.createOrder = async (req, res, next) => {
         size: item.size,
         price: item.price,
       });
+      await product.save({ session });
     }
 
     const {

@@ -9,17 +9,17 @@ const mongoose = require("mongoose");
 // CUSTOMER
 // =========================
 
-// @desc   Create new order from cart
-// @route  POST /api/v1/orders
-// @access protected/customer
-
+/**
+ * @desc   Create new order from cart
+ * @route  POST /api/v1/orders
+ * @access Protected/Customer
+ */
 exports.createOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    // 1- Get user's cart
     const cart = await Cart.findOne({
       userId: req.user._id,
     }).session(session);
@@ -28,10 +28,8 @@ exports.createOrder = async (req, res, next) => {
       throw new ApiError("Your cart is empty", 400);
     }
 
-    // 2- Prepare order items
     const orderItems = [];
 
-    // 3- Check/update every product atomically
     for (const item of cart.cartItems) {
       const product = await Product.findOneAndUpdate(
         {
@@ -58,8 +56,6 @@ exports.createOrder = async (req, res, next) => {
         );
       }
 
-      // 4- Create order item snapshot
-      // Price comes from the cart.
       orderItems.push({
         product: product._id,
         name: product.name,
@@ -69,53 +65,38 @@ exports.createOrder = async (req, res, next) => {
       });
     }
 
-    // 5- Get order information from request
     const {
       deliveryMethod,
       deliveryAddress,
       paymentMethod = "cash",
     } = req.body;
 
-    // 6- Calculate shipping only
     let shippingPrice = 0;
 
     if (deliveryMethod === "delivery") {
-      shippingPrice = 30;
+      shippingPrice = process.env.SHIPPINGPRICE;
     }
 
-    // 7- Tax
-    const taxPrice = 0;
-
-    // 8- Use the cart's already-calculated price
+    const taxPrice = process.env.TAXPRICE;
     const itemsPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice;
 
-    // 9- Calculate final order price
-    const totalOrderPrice = itemsPrice + taxPrice + shippingPrice;
+    const totalOrderPrice = itemsPrice + +taxPrice + +shippingPrice;
 
-    // 10- Create order
-    const order = await Order.create(
+    const [createdOrder] = await Order.create(
       [
         {
           user: req.user._id,
-
           cartItems: orderItems,
-
           deliveryMethod,
-
           deliveryAddress:
             deliveryMethod === "delivery" ? deliveryAddress : undefined,
-
           paymentMethod,
-
           itemsPrice,
           taxPrice,
           shippingPrice,
           totalOrderPrice,
-
           status: "pending",
-
           isPaid: false,
-
           statusHistory: [
             {
               status: "pending",
@@ -127,20 +108,15 @@ exports.createOrder = async (req, res, next) => {
       { session },
     );
 
-    const createdOrder = order[0];
-
-    // 11- Clear user's cart
     cart.cartItems = [];
     cart.totalCartPrice = 0;
     cart.totalPriceAfterDiscount = undefined;
 
     await cart.save({ session });
 
-    // 12- Commit transaction
     await session.commitTransaction();
     session.endSession();
 
-    // 13- Send response
     res.status(201).json({
       status: "success",
       message: "Order created successfully",
@@ -149,24 +125,29 @@ exports.createOrder = async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     next(error);
   }
 };
 
-// @desc   Get logged-in customer's orders
-// @route  GET /api/v1/orders/my-orders
-// @access protected/customer
+/**
+ * @desc   Get logged-in customer's orders
+ * @route  GET /api/v1/orders/my-orders
+ * @access Protected/Customer
+ */
 exports.getMyOrders = async (req, res, next) => {
   const orders = await Order.find({
     user: req.user._id,
   }).sort("-createdAt");
 
-  if (!orders) {
+  if (orders.length === 0) {
     return next(
-      new ApiError("There is no ordrs for this user yet, Start ordering!", 404),
+      new ApiError(
+        "There are no orders for this user yet. Start ordering!",
+        404,
+      ),
     );
   }
+
   res.status(200).json({
     status: "success",
     results: orders.length,
@@ -174,30 +155,38 @@ exports.getMyOrders = async (req, res, next) => {
   });
 };
 
-// @desc   Get specific order
-// @route  GET /api/v1/orders/id
-// @access protected/customer
+/**
+ * @desc   Get specific order
+ * @route  GET /api/v1/orders/:id
+ * @access Protected/Customer
+ */
 exports.getSpecificOrder = async (req, res, next) => {
-  const order = await Order.findOne({ user: req.user._id, _id: req.params.id });
+  const order = await Order.findOne({
+    user: req.user._id,
+    _id: req.params.id,
+  });
+
   if (!order) {
     return next(new ApiError("This order is not found", 404));
   }
+
   res.status(200).json({
     status: "success",
     data: order,
   });
 };
 
-// @desc   Cancel customer's order
-// @route  PATCH /api/v1/orders/:id/cancel
-// @access protected/customer
+/**
+ * @desc   Cancel customer's order
+ * @route  PATCH /api/v1/orders/:id/cancel
+ * @access Protected/Customer
+ */
 exports.cancelOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    // 1- Get order belonging to logged-in customer
     const order = await Order.findOne({
       _id: req.params.id,
       user: req.user._id,
@@ -207,7 +196,6 @@ exports.cancelOrder = async (req, res, next) => {
       throw new ApiError("Order not found", 404);
     }
 
-    // 2- Check if order can be cancelled
     if (!["pending", "accepted"].includes(order.status)) {
       throw new ApiError(
         `You cannot cancel an order with status: ${order.status}`,
@@ -215,7 +203,6 @@ exports.cancelOrder = async (req, res, next) => {
       );
     }
 
-    // 3- Return products to stock
     for (const item of order.cartItems) {
       const product = await Product.findByIdAndUpdate(
         item.product,
@@ -234,14 +221,13 @@ exports.cancelOrder = async (req, res, next) => {
       if (!product) {
         throw new ApiError(`Product ${item.product} was not found`, 404);
       }
+
       product.isAvailable = product.stockQuantity > 0;
       await product.save({ session });
     }
 
-    // 4- Update order status
     order.status = "cancelled";
 
-    // 5- Add status history
     order.statusHistory.push({
       status: "cancelled",
       changedBy: req.user._id,
@@ -249,7 +235,6 @@ exports.cancelOrder = async (req, res, next) => {
 
     await order.save({ session });
 
-    // 6- Commit transaction
     await session.commitTransaction();
     session.endSession();
 
@@ -261,7 +246,6 @@ exports.cancelOrder = async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     next(error);
   }
 };
@@ -270,21 +254,139 @@ exports.cancelOrder = async (req, res, next) => {
 // ADMIN
 // =========================
 
-// Get all orders
-exports.getAllOrders = async (req, res, next) => {};
+/**
+ * @desc   Get all orders
+ * @route  GET /api/v1/orders
+ * @access Protected/Admin
+ */
+exports.getAllOrders = factory.getAll(Order);
 
-// Accept pending order
-exports.acceptOrder = async (req, res, next) => {};
+/**
+ * @desc   Accept pending order and assign baker
+ * @route  PATCH /api/v1/orders/:id/accept
+ * @access Protected/Admin/Baker
+ */
+exports.acceptOrder = async (req, res, next) => {
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      status: "pending",
+    },
+    {
+      status: "accepted",
+    },
+    { new: true },
+  );
+
+  if (!order) {
+    return next(new ApiError("Could not change order status", 404));
+  }
+
+  order.statusHistory.push({
+    status: "accepted",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+
+  order.assignedBakerId = req.body.bakerId;
+
+  await order.save();
+
+  res.status(200).json({
+    status: "success",
+    data: order,
+  });
+};
 
 // =========================
-// BAKER
+// BAKER / ADMIN
 // =========================
 
-// Get orders assigned/available to baker
-exports.getBakerOrders = async (req, res, next) => {};
+/**
+ * @desc   Add baker ID to filter object
+ * @middleware
+ */
+exports.addBakerIdFilter = async (req, res, next) => {
+  req.filterObj = {
+    assignedBakerId: req.params.bakerId,
+  };
 
-// Mark order as preparing
-exports.markOrderPreparing = async (req, res, next) => {};
+  next();
+};
 
-// Mark order as ready
-exports.markOrderReady = async (req, res, next) => {};
+/**
+ * @desc   Get orders assigned to baker
+ * @route  GET /api/v1/orders/baker-orders/:bakerId
+ * @access Protected/Admin/Baker
+ */
+exports.getBakerOrders = factory.getAll(Order);
+
+/**
+ * @desc   Mark order as preparing
+ * @route  PATCH /api/v1/orders/:id/prepare
+ * @access Protected/Baker/Admin
+ */
+exports.markOrderPreparing = async (req, res, next) => {
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      status: "accepted",
+    },
+    {
+      status: "preparing",
+    },
+    { new: true },
+  );
+
+  if (!order) {
+    return next(new ApiError("Could not change order status", 404));
+  }
+
+  order.statusHistory.push({
+    status: "preparing",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+
+  await order.save();
+
+  res.status(200).json({
+    status: "success",
+    data: order,
+  });
+};
+
+/**
+ * @desc   Mark order as ready
+ * @route  PATCH /api/v1/orders/:id/ready
+ * @access Protected/Baker/Admin
+ */
+exports.markOrderReady = async (req, res, next) => {
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      status: "preparing",
+    },
+    {
+      status: "ready",
+    },
+    { new: true },
+  );
+
+  if (!order) {
+    return next(new ApiError("Could not change order status", 404));
+  }
+
+  order.statusHistory.push({
+    status: "ready",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+
+  await order.save();
+
+  res.status(200).json({
+    status: "success",
+    data: order,
+  });
+};

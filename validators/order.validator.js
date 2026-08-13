@@ -65,11 +65,43 @@ exports.cancelOrderValidator = [
   validatorMiddleware,
 ];
 // =========================
+// Ready ORDER
+// =========================
+
+exports.markOrderReadyValidator = [
+  check("id").isMongoId().withMessage("Invalid order id"),
+
+  validatorMiddleware,
+];
+// =========================
+// prepare ORDER
+// =========================
+
+exports.markOrderPreparingValidator = [
+  check("id").isMongoId().withMessage("Invalid order id"),
+
+  validatorMiddleware,
+];
+// =========================
 // accept order  ORDER
 // =========================
 
 exports.acceptOrderValidator = [
   check("id").isMongoId().withMessage("Invalid order id"),
+  check("bakerId")
+    .notEmpty()
+    .withMessage("The baker id is required")
+    .isMongoId()
+    .withMessage("Invalid baker id"),
+
+  validatorMiddleware,
+];
+exports.getBakerOrdersValidator = [
+  check("bakerId")
+    .notEmpty()
+    .withMessage("The baker id is required")
+    .isMongoId()
+    .withMessage("Invalid baker id"),
 
   validatorMiddleware,
 ];

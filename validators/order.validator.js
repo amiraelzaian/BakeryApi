@@ -109,6 +109,18 @@ exports.getBakerOrdersValidator = [
   validatorMiddleware,
 ];
 // =========================
+// get bakery orders
+// =========================
+exports.getDeliveryOrdersValidator = [
+  check("deliveryId")
+    .notEmpty()
+    .withMessage("The delivery id is required")
+    .isMongoId()
+    .withMessage("Invalid baker id"),
+
+  validatorMiddleware,
+];
+// =========================
 // assing order to delivery
 // =========================
 exports.assignOrderToDeliveryValidator = [
@@ -130,6 +142,18 @@ exports.assignOrderToDeliveryValidator = [
 // mark order as delivered
 // =========================
 exports.markOrderDeliveredValidator = [
+  check("id")
+    .notEmpty()
+    .withMessage("Order ID is required")
+    .isMongoId()
+    .withMessage("Invalid order ID"),
+
+  validatorMiddleware,
+];
+// =========================
+// mark order as picked up
+// =========================
+exports.markOrderPickedUpValidator = [
   check("id")
     .notEmpty()
     .withMessage("Order ID is required")

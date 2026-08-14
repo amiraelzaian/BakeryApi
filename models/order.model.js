@@ -64,6 +64,7 @@ const orderSchema = new mongoose.Schema(
         "out_for_delivery",
         "delivered",
         "cancelled",
+        "picked_up",
       ],
       default: "pending",
     },
@@ -81,6 +82,7 @@ const orderSchema = new mongoose.Schema(
             "out_for_delivery",
             "delivered",
             "cancelled",
+            "picked_up",
           ],
           required: true,
         },
@@ -118,6 +120,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["delivery", "pickup"],
       required: true,
+    },
+    pickedUpAt: {
+      type: Date,
+      default: Date.now(),
     },
     paymentStatus: {
       type: String,

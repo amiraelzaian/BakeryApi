@@ -309,7 +309,7 @@ exports.acceptOrder = async (req, res, next) => {
  */
 exports.addBakerIdFilter = async (req, res, next) => {
   req.filterObj = {
-    assignedBakerId: req.params.bakerId,
+    assignedBakerId: req.user._id,
   };
 
   next();
@@ -321,6 +321,25 @@ exports.addBakerIdFilter = async (req, res, next) => {
  * @access Protected/Admin/Baker
  */
 exports.getBakerOrders = factory.getAll(Order);
+
+/**
+ * @desc   Add Delivery ID to filter object
+ * @middleware
+ */
+exports.addDeliveryIdFilter = async (req, res, next) => {
+  req.filterObj = {
+    assignedDeliveryId: req.user._id,
+  };
+
+  next();
+};
+
+/**
+ * @desc   Get orders assigned to delivery
+ * @route  GET /api/v1/orders/delivery-orders/:deliveryId
+ * @access Protected/Admin/delivery
+ */
+exports.getDeliveryOrders = factory.getAll(Order);
 
 /**
  * @desc   Mark order as preparing
@@ -468,6 +487,7 @@ exports.markOrderDelivered = async (req, res, next) => {
   if (order.paymentMethod === "cash") {
     order.isPaid = true;
     order.paidAt = Date.now();
+    order.paymentStatus = "paid";
   }
 
   order.statusHistory.push({
@@ -482,4 +502,35 @@ exports.markOrderDelivered = async (req, res, next) => {
     status: "success",
     data: order,
   });
+};
+/**
+ * @desc   Mark assigned order as pickup
+ * @route  PATCH /api/v1/orders/:id/picked-up
+ * @access Protected/baker/Admin
+ */
+exports.markOrderPickedUp = async (req, res, next) => {
+  const order = await Order.findOneAndUpdate(
+    { _id: req.params.id, status: "ready", deliveryMethod: "pickup" },
+    {},
+    { new: true },
+  );
+  if (!order)
+    return next(new ApiError("Could not change this order status", 400));
+
+  order.status = "picked_up";
+
+  if (order.paymentMethod === "cash") {
+    order.isPaid = true;
+    order.paymentStatus = "paid";
+    order.paidAt = Date.now();
+  }
+
+  order.statusHistory.push({
+    status: "picked_up",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+  await order.save();
+
+  res.status(200).json({ status: "success", data: order });
 };

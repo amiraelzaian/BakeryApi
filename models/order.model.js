@@ -47,6 +47,11 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    assignedDeliveryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
     // Current order status
     status: {
@@ -114,20 +119,11 @@ const orderSchema = new mongoose.Schema(
       enum: ["delivery", "pickup"],
       required: true,
     },
-
-    deliveryAddress: {
-      governorate: String,
-      city: String,
-      street: String,
-      zipCode: String,
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+      default: "pending",
     },
-
-    totalOrderPrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
     paymentMethod: {
       type: String,
       enum: ["cash", "card"],
@@ -142,6 +138,19 @@ const orderSchema = new mongoose.Schema(
     paidAt: {
       type: Date,
       default: null,
+    },
+
+    deliveryAddress: {
+      governorate: String,
+      city: String,
+      street: String,
+      zipCode: String,
+    },
+
+    totalOrderPrice: {
+      type: Number,
+      required: true,
+      min: 0,
     },
 
     deliveredAt: {

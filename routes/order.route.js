@@ -13,6 +13,8 @@ const {
   addBakerIdFilter,
   markOrderPreparing,
   markOrderReady,
+  assignOrderToDelivery,
+  markOrderDelivered,
 } = require("../controllers/order.controller");
 
 const {
@@ -23,6 +25,8 @@ const {
   getBakerOrdersValidator,
   markOrderPreparingValidator,
   markOrderReadyValidator,
+  assignOrderToDeliveryValidator,
+  markOrderDeliveredValidator,
 } = require("../validators/order.validator");
 
 const router = express.Router();
@@ -93,5 +97,25 @@ router
 // =========================
 
 router.route("/:id").get(protect, getSpecificOrderValidator, getSpecificOrder);
+//--------------------
+// DELIVERY
+//--------------------
+router
+  .route("/:id/assign-delivery")
+  .patch(
+    protect,
+    allowedTo("admin"),
+    assignOrderToDeliveryValidator,
+    assignOrderToDelivery,
+  );
+
+router
+  .route("/:id/delivered")
+  .patch(
+    protect,
+    allowedTo("delivery", "admin"),
+    markOrderDeliveredValidator,
+    markOrderDelivered,
+  );
 
 module.exports = router;

@@ -391,3 +391,95 @@ exports.markOrderReady = async (req, res, next) => {
     data: order,
   });
 };
+
+/**
+ * @desc   Assign ready order to delivery employee
+ * @route  PATCH /api/v1/orders/:id/assign-delivery
+ * @access Protected/Admin
+ */
+exports.assignOrderToDelivery = async (req, res, next) => {
+  const { deliveryId } = req.body;
+
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      status: "ready",
+      deliveryMethod: "delivery",
+    },
+    {
+      status: "out_for_delivery",
+      assignedDeliveryId: deliveryId,
+    },
+    { new: true },
+  );
+
+  if (!order) {
+    return next(
+      new ApiError("Order not found or cannot be assigned for delivery", 404),
+    );
+  }
+
+  order.statusHistory.push({
+    status: "out_for_delivery",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+
+  await order.save();
+
+  res.status(200).json({
+    status: "success",
+    data: order,
+  });
+};
+
+/**
+ * @desc   Mark assigned order as delivered
+ * @route  PATCH /api/v1/orders/:id/delivered
+ * @access Protected/Delivery/Admin
+ */
+exports.markOrderDelivered = async (req, res, next) => {
+  const filter = {
+    _id: req.params.id,
+    status: "out_for_delivery",
+    deliveryMethod: "delivery",
+  };
+
+  // Delivery employee can only update orders assigned to them.
+  if (req.user.role === "delivery") {
+    filter.assignedDeliveryId = req.user._id;
+  }
+
+  const order = await Order.findOne(filter);
+
+  if (!order) {
+    return next(
+      new ApiError(
+        "Order not found or you are not assigned to this delivery",
+        404,
+      ),
+    );
+  }
+
+  order.status = "delivered";
+  order.deliveredAt = Date.now();
+
+  // Mark as paid only for Cash on Delivery.
+  if (order.paymentMethod === "cash") {
+    order.isPaid = true;
+    order.paidAt = Date.now();
+  }
+
+  order.statusHistory.push({
+    status: "delivered",
+    changedBy: req.user._id,
+    changedAt: Date.now(),
+  });
+
+  await order.save();
+
+  res.status(200).json({
+    status: "success",
+    data: order,
+  });
+};

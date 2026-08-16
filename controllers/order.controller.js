@@ -5,7 +5,7 @@ const ApiError = require("../utils/apiError");
 const factory = require("../controllers/factory");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
-
+const axios = require("axios");
 const queryString = require("query-string"); // npm install query-string
 const _ = require("underscore"); // npm install underscore
 const PendingOrder = require("../models/pendingOrder.model");
@@ -21,7 +21,6 @@ exports.createOrder = async (req, res, next) => {
 };
 
 // ---- Kashier: build payment link ----
-const axios = require("axios");
 
 const createKashierCheckout = async (req, res, next) => {
   try {
@@ -52,7 +51,7 @@ const createKashierCheckout = async (req, res, next) => {
         ? "https://api.kashier.io/v3/payment/sessions"
         : "https://test-api.kashier.io/v3/payment/sessions";
 
-    const expireAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // expires in 30 min
+    const expireAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     const kashierResponse = await axios.post(
       apiBaseUrl,
@@ -63,7 +62,6 @@ const createKashierCheckout = async (req, res, next) => {
         currency: "EGP",
         order: merchantOrderId,
         merchantId: process.env.KASHIER_MERCHANT_ID,
-
         merchantRedirect: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-callback`,
         display: "en",
         type: "one-time",

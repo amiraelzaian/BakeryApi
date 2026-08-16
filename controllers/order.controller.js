@@ -6,6 +6,7 @@ const factory = require("../controllers/factory");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const axios = require("axios");
+const FailedOrder = require("../models/failedOrders.model");
 const queryString = require("query-string"); // npm install query-string
 const _ = require("underscore"); // npm install underscore
 const PendingOrder = require("../models/pendingOrder.model");
@@ -38,12 +39,21 @@ const createKashierCheckout = async (req, res, next) => {
 
     const merchantOrderId = `${req.user._id}_${Date.now()}`;
 
+    // Snapshot the cart NOW, so later payments/webhooks don't depend on
+    // the live cart state (which may have changed or been cleared already)
     await PendingOrder.create({
       merchantOrderId,
       user: req.user._id,
       deliveryMethod,
       deliveryAddress:
         deliveryMethod === "delivery" ? deliveryAddress : undefined,
+      cartItems: cart.cartItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        size: item.size,
+        price: item.price,
+      })),
+      itemsPrice,
     });
 
     const apiBaseUrl =
@@ -103,16 +113,24 @@ const createKashierCheckout = async (req, res, next) => {
 // ---- Kashier: webhook ----
 exports.kashierWebhook = async (req, res) => {
   try {
-    const { data, event } = req.body;
+    let body = req.body;
+
+    if (Buffer.isBuffer(body)) {
+      body = JSON.parse(body.toString("utf-8"));
+    }
+
+    const { data, event } = body;
 
     if (!data || !data.signatureKeys) {
       console.log("Kashier webhook: received test ping or empty payload");
       return res.status(200).json({ received: true });
     }
 
-    // Verify signature — sort signatureKeys, pick those fields, HMAC with Payment API Key
     const sortedKeys = [...data.signatureKeys].sort();
-    const signaturePayload = queryString.stringify(_.pick(data, sortedKeys));
+    const signaturePayload = sortedKeys
+      .map((key) => `${key}=${encodeURIComponent(data[key])}`)
+      .join("&");
+
     const expectedSignature = crypto
       .createHmac("sha256", process.env.KASHIER_PAYMENT_API_KEY)
       .update(signaturePayload)
@@ -138,6 +156,7 @@ exports.kashierWebhook = async (req, res) => {
 };
 
 // ---- Kashier: fulfill the order ----
+
 const createKashierOrder = async (data) => {
   const existingOrder = await Order.findOne({
     kashierTransactionId: data.transactionId,
@@ -148,23 +167,17 @@ const createKashierOrder = async (data) => {
     merchantOrderId: data.merchantOrderId,
   });
   if (!pending) {
-    console.error(
-      `Kashier webhook: no pending order found for ${data.merchantOrderId}`,
-    );
+    console.error(`No pending order found for ${data.merchantOrderId}`);
     return;
   }
 
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-
-    const cart = await Cart.findOne({ userId: pending.user }).session(session);
-    if (!cart || cart.cartItems.length === 0) {
-      throw new ApiError("Cart empty at fulfillment time", 400);
-    }
-
+    // throw new ApiError("TEST: forcing failure to verify refund flow", 500);
+    // Use the SNAPSHOT taken at checkout time, not the live cart
     const orderItems = [];
-    for (const item of cart.cartItems) {
+    for (const item of pending.cartItems) {
       const product = await Product.findOneAndUpdate(
         {
           _id: item.productId,
@@ -188,7 +201,6 @@ const createKashierOrder = async (data) => {
       });
     }
 
-    const itemsPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice;
     const totalOrderPrice = data.amount;
 
     const [createdOrder] = await Order.create(
@@ -202,7 +214,7 @@ const createKashierOrder = async (data) => {
               ? pending.deliveryAddress
               : undefined,
           paymentMethod: "card",
-          itemsPrice,
+          itemsPrice: pending.itemsPrice,
           taxPrice: process.env.TAXPRICE,
           shippingPrice:
             pending.deliveryMethod === "delivery"
@@ -219,20 +231,96 @@ const createKashierOrder = async (data) => {
       { session },
     );
 
-    cart.cartItems = [];
-    cart.totalCartPrice = 0;
-    cart.totalPriceAfterDiscount = undefined;
-    await cart.save({ session });
+    // Clear the cart on a best-effort basis — the order itself is
+    // already committed regardless of whether the cart still matches
+    await Cart.findOneAndUpdate(
+      { userId: pending.user },
+      {
+        cartItems: [],
+        totalCartPrice: 0,
+        $unset: { totalPriceAfterDiscount: "" },
+      },
+      { session },
+    );
 
     await session.commitTransaction();
-
     await PendingOrder.deleteOne({ merchantOrderId: data.merchantOrderId });
   } catch (error) {
     await session.abortTransaction();
     console.error("Kashier order creation failed:", error);
-    // TODO: charged-but-no-order case — flag for refund/manual review
+
+    // Avoid double-refunding if the webhook fires more than once for the same order
+    const alreadyLogged = await FailedOrder.findOne({
+      transactionId: data.transactionId,
+    });
+
+    let refunded = alreadyLogged?.refunded || false;
+
+    if (!alreadyLogged) {
+      try {
+        await refundKashierPayment(data.kashierOrderId, data.amount);
+        refunded = true;
+        console.log(
+          `Refunded ${data.kashierOrderId} due to order creation failure`,
+        );
+      } catch (refundError) {
+        console.error(
+          `CRITICAL: Refund failed for ${data.kashierOrderId}. Manual review needed.`,
+          refundError.message,
+        );
+      }
+
+      try {
+        await FailedOrder.create({
+          transactionId: data.transactionId,
+          merchantOrderId: data.merchantOrderId,
+          user: pending.user,
+          amount: data.amount,
+          reason: error.message || "Unknown error during order creation",
+          refunded,
+        });
+      } catch (logError) {
+        console.error("Failed to log failed order:", logError);
+      }
+    } else {
+      console.log(
+        `Skipping duplicate refund attempt for ${data.transactionId}`,
+      );
+    }
   } finally {
     session.endSession();
+  }
+};
+const refundKashierPayment = async (
+  kashierOrderId,
+  amount,
+  reason = "Order creation failed after payment",
+) => {
+  try {
+    const baseUrl =
+      process.env.KASHIER_MODE === "live"
+        ? "https://fep.kashier.io"
+        : "https://test-fep.kashier.io";
+
+    const response = await axios.put(
+      `${baseUrl}/v3/orders/${kashierOrderId}`,
+      {
+        apiOperation: "REFUND",
+        reason,
+        transaction: { amount },
+      },
+      {
+        headers: {
+          Authorization: process.env.KASHIER_SECRET_KEY,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Refund failed:", error.response?.data || error.message);
+    throw error;
   }
 };
 

@@ -14,7 +14,16 @@ const pendingOrderSchema = new mongoose.Schema({
     street: String,
     zipCode: String,
   },
-  createdAt: { type: Date, default: Date.now, expires: 3600 }, // auto-delete after 1hr
+  cartItems: [
+    {
+      productId: mongoose.Schema.ObjectId,
+      quantity: Number,
+      size: String,
+      price: Number,
+    },
+  ],
+  itemsPrice: Number,
+  createdAt: { type: Date, default: Date.now, expires: 3600 },
 });
 
 module.exports = mongoose.model("PendingOrder", pendingOrderSchema);

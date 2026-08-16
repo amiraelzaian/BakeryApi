@@ -445,6 +445,42 @@ exports.createCashOrder = async (req, res, next) => {
   }
 };
 
+// Get orders where payment/order processing failed
+// exports.getFailedOrders = async (req, res, next) => {
+//   const orders = await FailedOrder.find({
+//     refunded: false,
+//   }).sort("-createdAt");
+
+//   res.status(200).json({
+//     status: "success",
+//     results: orders.length,
+//     data: orders,
+//   });
+// };
+exports.getOrderCreationFailures = async (req, res, next) => {
+  const failures = await FailedOrder.find()
+    .populate("user", "name email")
+    .sort("-createdAt");
+
+  res.status(200).json({
+    status: "success",
+    results: failures.length,
+    data: failures,
+  });
+};
+
+// Get orders that were refunded
+exports.getRefundedOrders = async (req, res, next) => {
+  const orders = await FailedOrder.find({
+    refunded: true,
+  }).sort("-createdAt");
+
+  res.status(200).json({
+    status: "success",
+    results: orders.length,
+    data: orders,
+  });
+};
 /**
  * @desc   Get logged-in customer's orders
  * @route  GET /api/v1/orders/my-orders

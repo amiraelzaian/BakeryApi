@@ -19,6 +19,9 @@ const {
   getDeliveryOrders,
   addDeliveryIdFilter,
   createOrder,
+  getFailedOrders,
+  getRefundedOrders,
+  getOrderCreationFailures,
 } = require("../controllers/order.controller");
 
 const {
@@ -36,6 +39,15 @@ const {
 } = require("../validators/order.validator");
 
 const router = express.Router();
+
+// admin
+router
+  .route("/failed-orders")
+  .get(protect, allowedTo("admin"), getOrderCreationFailures);
+
+router
+  .route("/refunded-orders")
+  .get(protect, allowedTo("admin"), getRefundedOrders);
 
 // =========================
 // CUSTOMER

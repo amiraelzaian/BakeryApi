@@ -3,7 +3,7 @@ const express = require("express");
 const { protect, allowedTo } = require("../controllers/auth.controller");
 
 const {
-  createOrder,
+  createCashOrder,
   getMyOrders,
   getSpecificOrder,
   cancelOrder,
@@ -18,6 +18,7 @@ const {
   markOrderPickedUp,
   getDeliveryOrders,
   addDeliveryIdFilter,
+  createOrder,
 } = require("../controllers/order.controller");
 
 const {
@@ -70,7 +71,7 @@ router
 // =========================
 
 router
-  .route("my-baker-orders")
+  .route("/my-baker-orders")
   .get(
     protect,
     allowedTo("baker"),
@@ -142,6 +143,9 @@ router
 // SPECIFIC ORDER
 // =========================
 
+router.get("/kashier-callback", (req, res) => {
+  res.status(200).json({ message: "Payment processed, check your orders" });
+});
 router.route("/:id").get(protect, getSpecificOrderValidator, getSpecificOrder);
 
 module.exports = router;

@@ -123,7 +123,13 @@ const orderSchema = new mongoose.Schema(
     },
     pickedUpAt: {
       type: Date,
-      default: Date.now(),
+      default: null,
+    },
+    kashierTransactionId: {
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true,
     },
     paymentStatus: {
       type: String,
@@ -136,10 +142,10 @@ const orderSchema = new mongoose.Schema(
       default: "cash",
     },
 
-    isPaid: {
-      type: Boolean,
-      default: false,
-    },
+    // isPaid: {
+    //   type: Boolean,
+    //   default: false,
+    // },
 
     paidAt: {
       type: Date,

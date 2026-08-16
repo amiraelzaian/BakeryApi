@@ -4,17 +4,246 @@ const Order = require("../models/order.model");
 const ApiError = require("../utils/apiError");
 const factory = require("../controllers/factory");
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
-// =========================
-// CUSTOMER
-// =========================
+const queryString = require("query-string"); // npm install query-string
+const _ = require("underscore"); // npm install underscore
+const PendingOrder = require("../models/pendingOrder.model");
+
+exports.createOrder = async (req, res, next) => {
+  const { paymentMethod = "cash" } = req.body;
+
+  if (paymentMethod === "card") {
+    return createKashierCheckout(req, res, next);
+  }
+
+  return createCashOrder(req, res, next);
+};
+
+// ---- Kashier: build payment link ----
+const axios = require("axios");
+
+const createKashierCheckout = async (req, res, next) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.user._id });
+    if (!cart || cart.cartItems.length === 0) {
+      throw new ApiError("Your cart is empty", 400);
+    }
+
+    const { deliveryMethod, deliveryAddress } = req.body;
+    const shippingPrice =
+      deliveryMethod === "delivery" ? +process.env.SHIPPINGPRICE : 0;
+    const taxPrice = +process.env.TAXPRICE;
+    const itemsPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice;
+    const totalOrderPrice = itemsPrice + taxPrice + shippingPrice;
+
+    const merchantOrderId = `${req.user._id}_${Date.now()}`;
+
+    await PendingOrder.create({
+      merchantOrderId,
+      user: req.user._id,
+      deliveryMethod,
+      deliveryAddress:
+        deliveryMethod === "delivery" ? deliveryAddress : undefined,
+    });
+
+    const apiBaseUrl =
+      process.env.KASHIER_MODE === "live"
+        ? "https://api.kashier.io/v3/payment/sessions"
+        : "https://test-api.kashier.io/v3/payment/sessions";
+
+    const expireAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // expires in 30 min
+
+    const kashierResponse = await axios.post(
+      apiBaseUrl,
+      {
+        expireAt,
+        maxFailureAttempts: 3,
+        amount: totalOrderPrice.toFixed(2),
+        currency: "EGP",
+        order: merchantOrderId,
+        merchantId: process.env.KASHIER_MERCHANT_ID,
+
+        merchantRedirect: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-callback`,
+        display: "en",
+        type: "one-time",
+        allowedMethods: "card",
+        serverWebhook: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-webhook`,
+        customer: {
+          email: req.user.email,
+          reference: req.user._id.toString(),
+        },
+      },
+      {
+        headers: {
+          Authorization: process.env.KASHIER_SECRET_KEY,
+          "api-key": process.env.KASHIER_PAYMENT_API_KEY,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    res.status(200).json({
+      status: "success",
+      paymentUrl: kashierResponse.data.sessionUrl,
+      merchantOrderId,
+    });
+  } catch (error) {
+    if (error.response) {
+      console.error("Kashier session creation error:", error.response.data);
+      return next(
+        new ApiError(
+          error.response.data.messages?.en || "Payment session creation failed",
+          400,
+        ),
+      );
+    }
+    next(error);
+  }
+};
+
+// ---- Kashier: webhook ----
+exports.kashierWebhook = async (req, res) => {
+  try {
+    const { data, event } = req.body;
+
+    if (!data || !data.signatureKeys) {
+      console.log("Kashier webhook: received test ping or empty payload");
+      return res.status(200).json({ received: true });
+    }
+
+    // Verify signature — sort signatureKeys, pick those fields, HMAC with Payment API Key
+    const sortedKeys = [...data.signatureKeys].sort();
+    const signaturePayload = queryString.stringify(_.pick(data, sortedKeys));
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.KASHIER_PAYMENT_API_KEY)
+      .update(signaturePayload)
+      .digest("hex");
+
+    const receivedSignature = req.header("x-kashier-signature");
+
+    if (expectedSignature !== receivedSignature) {
+      console.error("Kashier webhook: invalid signature");
+      return res.status(400).send("Invalid signature");
+    }
+
+    // Acknowledge immediately per Kashier's docs, then process
+    res.status(200).json({ received: true });
+
+    if (event === "pay" && data.status === "SUCCESS") {
+      await createKashierOrder(data);
+    }
+  } catch (error) {
+    console.error("Kashier webhook error:", error);
+    if (!res.headersSent) res.status(400).send("Webhook error");
+  }
+};
+
+// ---- Kashier: fulfill the order ----
+const createKashierOrder = async (data) => {
+  const existingOrder = await Order.findOne({
+    kashierTransactionId: data.transactionId,
+  });
+  if (existingOrder) return; // already processed — idempotency guard
+
+  const pending = await PendingOrder.findOne({
+    merchantOrderId: data.merchantOrderId,
+  });
+  if (!pending) {
+    console.error(
+      `Kashier webhook: no pending order found for ${data.merchantOrderId}`,
+    );
+    return;
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    const cart = await Cart.findOne({ userId: pending.user }).session(session);
+    if (!cart || cart.cartItems.length === 0) {
+      throw new ApiError("Cart empty at fulfillment time", 400);
+    }
+
+    const orderItems = [];
+    for (const item of cart.cartItems) {
+      const product = await Product.findOneAndUpdate(
+        {
+          _id: item.productId,
+          stockQuantity: { $gte: item.quantity },
+          isAvailable: true,
+        },
+        {
+          $inc: { stockQuantity: -item.quantity, soldQuantity: item.quantity },
+        },
+        { new: true, session },
+      );
+      if (!product) {
+        throw new ApiError(`Product ${item.productId} unavailable`, 400);
+      }
+      orderItems.push({
+        product: product._id,
+        name: product.name,
+        quantity: item.quantity,
+        size: item.size,
+        price: item.price,
+      });
+    }
+
+    const itemsPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice;
+    const totalOrderPrice = data.amount;
+
+    const [createdOrder] = await Order.create(
+      [
+        {
+          user: pending.user,
+          cartItems: orderItems,
+          deliveryMethod: pending.deliveryMethod,
+          deliveryAddress:
+            pending.deliveryMethod === "delivery"
+              ? pending.deliveryAddress
+              : undefined,
+          paymentMethod: "card",
+          itemsPrice,
+          taxPrice: process.env.TAXPRICE,
+          shippingPrice:
+            pending.deliveryMethod === "delivery"
+              ? process.env.SHIPPINGPRICE
+              : 0,
+          totalOrderPrice,
+          status: "pending",
+          paymentStatus: "paid",
+          paidAt: Date.now(),
+          kashierTransactionId: data.transactionId,
+          statusHistory: [{ status: "pending", changedBy: pending.user }],
+        },
+      ],
+      { session },
+    );
+
+    cart.cartItems = [];
+    cart.totalCartPrice = 0;
+    cart.totalPriceAfterDiscount = undefined;
+    await cart.save({ session });
+
+    await session.commitTransaction();
+
+    await PendingOrder.deleteOne({ merchantOrderId: data.merchantOrderId });
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Kashier order creation failed:", error);
+    // TODO: charged-but-no-order case — flag for refund/manual review
+  } finally {
+    session.endSession();
+  }
+};
 
 /**
  * @desc   Create new order from cart
  * @route  POST /api/v1/orders
  * @access Protected/Customer
  */
-exports.createOrder = async (req, res, next) => {
+exports.createCashOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {
@@ -97,7 +326,7 @@ exports.createOrder = async (req, res, next) => {
           shippingPrice,
           totalOrderPrice,
           status: "pending",
-          isPaid: false,
+          paymentStatus: "pending",
           statusHistory: [
             {
               status: "pending",
@@ -485,9 +714,8 @@ exports.markOrderDelivered = async (req, res, next) => {
 
   // Mark as paid only for Cash on Delivery.
   if (order.paymentMethod === "cash") {
-    order.isPaid = true;
-    order.paidAt = Date.now();
     order.paymentStatus = "paid";
+    order.paidAt = Date.now();
   }
 
   order.statusHistory.push({
@@ -520,8 +748,8 @@ exports.markOrderPickedUp = async (req, res, next) => {
   order.status = "picked_up";
 
   if (order.paymentMethod === "cash") {
-    order.isPaid = true;
     order.paymentStatus = "paid";
+
     order.paidAt = Date.now();
   }
 

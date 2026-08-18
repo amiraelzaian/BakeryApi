@@ -143,6 +143,8 @@ The guiding rule for phase order: **build what makes the business function first
 
 ## Phase 2 — Complete the Transaction
 
+# start
+
 **Goal:** Money and delivery. Phase 1 proved the business works; Phase 2 makes it real — customers can actually pay, and their food actually reaches them.
 
 **In scope:**

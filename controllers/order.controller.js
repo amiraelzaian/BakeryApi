@@ -39,8 +39,7 @@ const createKashierCheckout = async (req, res, next) => {
 
     const merchantOrderId = `${req.user._id}_${Date.now()}`;
 
-    // Snapshot the cart NOW, so later payments/webhooks don't depend on
-    // the live cart state (which may have changed or been cleared already)
+    // Snapshot the cart NOW, so later payments/webhooks don't depend on the live cart state (which may have changed or been cleared already)
     await PendingOrder.create({
       merchantOrderId,
       user: req.user._id,
@@ -61,7 +60,7 @@ const createKashierCheckout = async (req, res, next) => {
         ? "https://api.kashier.io/v3/payment/sessions"
         : "https://test-api.kashier.io/v3/payment/sessions";
 
-    const expireAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const expireAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     const kashierResponse = await axios.post(
       apiBaseUrl,

@@ -3,7 +3,7 @@ const express = require("express");
 const { protect, allowedTo } = require("../controllers/auth.controller");
 
 const {
-  createOrder,
+  createCashOrder,
   getMyOrders,
   getSpecificOrder,
   cancelOrder,
@@ -15,6 +15,13 @@ const {
   markOrderReady,
   assignOrderToDelivery,
   markOrderDelivered,
+  markOrderPickedUp,
+  getDeliveryOrders,
+  addDeliveryIdFilter,
+  createOrder,
+  getFailedOrders,
+  getRefundedOrders,
+  getOrderCreationFailures,
 } = require("../controllers/order.controller");
 
 const {
@@ -27,9 +34,20 @@ const {
   markOrderReadyValidator,
   assignOrderToDeliveryValidator,
   markOrderDeliveredValidator,
+  markOrderPickedUpValidator,
+  getDeliveryOrdersValidator,
 } = require("../validators/order.validator");
 
 const router = express.Router();
+
+// admin
+router
+  .route("/failed-orders")
+  .get(protect, allowedTo("admin"), getOrderCreationFailures);
+
+router
+  .route("/refunded-orders")
+  .get(protect, allowedTo("admin"), getRefundedOrders);
 
 // =========================
 // CUSTOMER
@@ -65,10 +83,10 @@ router
 // =========================
 
 router
-  .route("/baker-orders/:bakerId")
+  .route("/my-baker-orders")
   .get(
     protect,
-    allowedTo("admin", "baker"),
+    allowedTo("baker"),
     addBakerIdFilter,
     getBakerOrdersValidator,
     getBakerOrders,
@@ -93,13 +111,19 @@ router
   );
 
 // =========================
-// SPECIFIC ORDER
+// DELIVERY
 // =========================
 
-router.route("/:id").get(protect, getSpecificOrderValidator, getSpecificOrder);
-//--------------------
-// DELIVERY
-//--------------------
+router
+  .route("/my-deliveries")
+  .get(
+    protect,
+    allowedTo("delivery"),
+    addDeliveryIdFilter,
+    getDeliveryOrdersValidator,
+    getDeliveryOrders,
+  );
+
 router
   .route("/:id/assign-delivery")
   .patch(
@@ -117,5 +141,23 @@ router
     markOrderDeliveredValidator,
     markOrderDelivered,
   );
+
+router
+  .route("/:id/picked-up")
+  .patch(
+    protect,
+    allowedTo("admin", "baker"),
+    markOrderPickedUpValidator,
+    markOrderPickedUp,
+  );
+
+// =========================
+// SPECIFIC ORDER
+// =========================
+
+router.get("/kashier-callback", (req, res) => {
+  res.status(200).json({ message: "Payment processed, check your orders" });
+});
+router.route("/:id").get(protect, getSpecificOrderValidator, getSpecificOrder);
 
 module.exports = router;

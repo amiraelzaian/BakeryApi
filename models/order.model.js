@@ -64,6 +64,7 @@ const orderSchema = new mongoose.Schema(
         "out_for_delivery",
         "delivered",
         "cancelled",
+        "picked_up",
       ],
       default: "pending",
     },
@@ -81,6 +82,7 @@ const orderSchema = new mongoose.Schema(
             "out_for_delivery",
             "delivered",
             "cancelled",
+            "picked_up",
           ],
           required: true,
         },
@@ -119,6 +121,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["delivery", "pickup"],
       required: true,
     },
+    pickedUpAt: {
+      type: Date,
+      default: null,
+    },
+    kashierTransactionId: {
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true,
+    },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],
@@ -130,10 +142,10 @@ const orderSchema = new mongoose.Schema(
       default: "cash",
     },
 
-    isPaid: {
-      type: Boolean,
-      default: false,
-    },
+    // isPaid: {
+    //   type: Boolean,
+    //   default: false,
+    // },
 
     paidAt: {
       type: Date,

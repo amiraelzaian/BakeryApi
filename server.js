@@ -19,6 +19,7 @@ const productRoute = require("./routes/product.route");
 const cartRoute = require("./routes/cart.route");
 const couponRoute = require("./routes/coupon.route");
 const orderRoute = require("./routes/order.route");
+const { kashierWebhook } = require("./controllers/order.controller");
 
 //db connection
 dbConnection();
@@ -29,6 +30,12 @@ connectRedis();
 //enable other domains to access your app
 app.use(cors());
 app.options("*all", cors());
+
+app.post(
+  "/api/v1/orders/kashier-webhook",
+  express.raw({ type: "application/json" }),
+  kashierWebhook,
+);
 
 // middlewares
 app.use(express.json());

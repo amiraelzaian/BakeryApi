@@ -21,7 +21,8 @@ const calcTotalPrice = (cart) => {
 // @route  POST /api/v1/cart
 // @access protected/customer
 exports.addProductToCart = async (req, res, next) => {
-  const { productId, size } = req.body;
+  const productId = req.params.productId || req.body.productId;
+  const { size } = req.body;
 
   // 1- Get product
   const product = await Product.findById(productId);
@@ -121,11 +122,15 @@ exports.addProductToCart = async (req, res, next) => {
 
   await cart.save();
 
-  res.status(201).json({
-    status: "success",
-    message: "Product was added successfully",
-    data: cart,
-  });
+  // res.status(201).json({
+  //   status: "success",
+  //   message: "Product was added successfully",
+  //   data: cart,
+  // });
+
+  res.locals.cart = cart;
+
+  next();
 };
 
 // @desc   Get logged users cart

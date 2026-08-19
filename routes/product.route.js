@@ -19,6 +19,15 @@ const {
   getAllProducts,
   getAllProductsAdmin,
 } = require("../controllers/product.controller");
+const {
+  createReview,
+  addProductIdToFilter,
+  getAllReviews,
+} = require("../controllers/review.controller");
+const {
+  createReviewValidator,
+  getAllReviewsOnProductValidator,
+} = require("../validators/review.validator");
 
 const router = express.Router();
 
@@ -32,6 +41,11 @@ router
     createProductValidator,
     createProduct,
   );
+
+router
+  .route("/:productId/reviews")
+  .post(protect, allowedTo("customer"), createReviewValidator, createReview)
+  .get(addProductIdToFilter, getAllReviewsOnProductValidator, getAllReviews);
 
 router.route("/admin").get(protect, allowedTo("admin"), getAllProductsAdmin);
 

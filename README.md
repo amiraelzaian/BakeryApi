@@ -137,7 +137,7 @@ The guiding rule for phase order: **build what makes the business function first
 
 **Why this scope:** These are the pieces without which nothing else makes sense. There's no point building a delivery-tracking feature for orders that can't yet be reliably created and prepared.
 
-## Phase 1 — Complete the Transaction ✅
+## Phase 1 — Complete the Transaction
 
 ---
 
@@ -160,11 +160,13 @@ The guiding rule for phase order: **build what makes the business function first
 
 **Why this scope:** This is the point where the system stops being a demo and starts being something you could hand to an actual small bakery. A business isn't complete until money and fulfillment are handled end-to-end.
 
-## Phase 2 — Complete the Transaction ✅
+## Phase 2 — Complete the Transaction
 
 ---
 
 ## Phase 3 — Growth & Insight
+
+# start
 
 **Goal:** The features that make the business easier to run and more competitive — not required to function, but what separates a functional system from a well-run one.
 

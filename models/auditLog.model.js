@@ -7,16 +7,21 @@ const AuditLogSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
     action: {
       type: String,
       required: true,
       enum: [
-        "CREATE_EMPLOYEE",
-        "DELETE_EMPLOYEE",
+        "CREATE_CATEGORY",
+        "UPDATE_CATEGORY",
+        "DELETE_CATEGORY",
         "CREATE_PRODUCT",
         "DELETE_PRODUCT",
         "UPDATE_PRODUCT",
         "DELETE_REVIEW",
+        "CREATE_USER",
+        "UPDATE_USER",
+        "DELETE_USER",
         "CREATE_COUPON",
         "UPDATE_COUPON",
         "CREATE_SEASONAL_OFFER",

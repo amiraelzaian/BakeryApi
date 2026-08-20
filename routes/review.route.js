@@ -11,6 +11,7 @@ const {
   updateReviewValidator,
   deleteReviewValidator,
 } = require("../validators/review.validator");
+const { logAction } = require("../middlewares/logAction");
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router
     protect,
     allowedTo("admin"),
     deleteReviewValidator,
+    logAction("DELETE_REVIEW", "Review"),
     deleteReviewForAdmin,
   );
 

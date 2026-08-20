@@ -12,7 +12,7 @@ exports.createOne =
     if (options.invalidateCache) {
       await options.invalidateCache();
     }
-    res.status(201).json({ data: document });
+    res.status(200).json({ status: "success", data: document });
   };
 
 exports.getAll = (Model) => async (req, res, next) => {
@@ -82,5 +82,5 @@ exports.deleteOne =
     if (options.invalidateCache) {
       await options.invalidateCache();
     }
-    res.status(204).json({ status: "success to delete" });
+    res.status(200).json({ status: "success" });
   };

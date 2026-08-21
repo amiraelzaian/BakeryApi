@@ -2,7 +2,7 @@ const ApiError = require("../utils/apiError");
 const Cart = require("../models/cart.model.js");
 const Product = require("../models/product.model.js");
 const Coupon = require("../models/coupon.model.js");
-const getActiveOffersForProducts = require("./seasonalOffer.controller.js");
+const { getActiveOffersForProducts } = require("./seasonalOffer.controller.js");
 
 // calculate total price
 const calcTotalPrice = (cart) => {
@@ -23,7 +23,11 @@ const calcTotalPrice = (cart) => {
  @ route  POST /api/v1/cart
  @ access protected/customer
  **/
-exports.addProductToCart = async (req, res, next) => {
+
+// =========================
+// CORE LOGIC (shared, no response handling)
+// =========================
+const addProductToCartCore = async (req) => {
   const productId = req.params.productId || req.body.productId;
   const { size } = req.body;
 
@@ -31,49 +35,40 @@ exports.addProductToCart = async (req, res, next) => {
   const product = await Product.findById(productId);
 
   if (!product) {
-    return next(new ApiError("Product not found", 404));
+    throw new ApiError("Product not found", 404);
   }
 
   // 2- Check product availability
   if (!product.isAvailable || product.stockQuantity <= 0) {
-    return next(new ApiError("Product is currently unavailable", 400));
+    throw new ApiError("Product is currently unavailable", 400);
   }
 
   // 3- Determine price based on product sizes
   let selectedPrice = product.price;
 
-  // Product has sizes
   if (product.sizes && product.sizes.length > 0) {
-    // Size is required when product has sizes
     if (!size) {
-      return next(new ApiError("Size is required for this product", 400));
+      throw new ApiError("Size is required for this product", 400);
     }
 
-    // Find selected size
     const selectedSize = product.sizes.find((item) => item.name === size);
 
     if (!selectedSize) {
-      return next(
-        new ApiError(`Product is not available in ${size} size`, 400),
-      );
+      throw new ApiError(`Product is not available in ${size} size`, 400);
     }
 
-    // Use price of selected size
     selectedPrice = selectedSize.price;
   } else {
-    // Product has no sizes
-    // Therefore size must not be provided
     if (size) {
-      return next(new ApiError("This product does not have sizes", 400));
+      throw new ApiError("This product does not have sizes", 400);
     }
 
-    // Make sure product has a price
     if (product.price === null || product.price === undefined) {
-      return next(new ApiError("Product price is not configured", 400));
+      throw new ApiError("Product price is not configured", 400);
     }
   }
 
-  // check the offer
+  // 3.5- Apply active seasonal offer discount, if any
   const offersCoveringThisProduct = await getActiveOffersForProducts(
     [product._id],
     [product.categoryId],
@@ -90,15 +85,11 @@ exports.addProductToCart = async (req, res, next) => {
   }
 
   // 4- Get cart for logged user
-  let cart = await Cart.findOne({
-    userId: req.user._id,
-  });
+  let cart = await Cart.findOne({ userId: req.user._id });
 
   if (!cart) {
-    // create cart for logged user with product
     cart = await Cart.create({
       userId: req.user._id,
-
       cartItems: [
         {
           productId: product._id,
@@ -109,7 +100,6 @@ exports.addProductToCart = async (req, res, next) => {
       ],
     });
   } else {
-    // product exists in cart => update quantity
     const productIndex = cart.cartItems.findIndex(
       (item) => item.productId.toString() === productId && item.size === size,
     );
@@ -117,14 +107,12 @@ exports.addProductToCart = async (req, res, next) => {
     if (productIndex > -1) {
       const cartItem = cart.cartItems[productIndex];
 
-      // prevent adding more than available stock
       if (cartItem.quantity >= product.stockQuantity) {
-        return next(new ApiError("Cannot add more than available stock", 400));
+        throw new ApiError("Cannot add more than available stock", 400);
       }
 
       cartItem.quantity += 1;
     } else {
-      // product does not exist in cart -> push product to cart
       cart.cartItems.push({
         productId: product._id,
         size: size || undefined,
@@ -134,22 +122,45 @@ exports.addProductToCart = async (req, res, next) => {
     }
   }
 
-  // calculate total cart price
   const totalPrice = calcTotalPrice(cart);
-
   cart.totalCartPrice = totalPrice;
 
   await cart.save();
 
-  // res.status(201).json({
-  //   status: "success",
-  //   message: "Product was added successfully",
-  //   data: cart,
-  // });
+  return cart;
+};
 
-  res.locals.cart = cart;
+// =========================
+// STANDALONE ROUTE — POST /api/v1/cart
+// Responds directly, nothing chained after it
+// =========================
+exports.addProductToCart = async (req, res, next) => {
+  try {
+    const cart = await addProductToCartCore(req);
 
-  next();
+    res.status(201).json({
+      status: "success",
+      message: "Product was added successfully",
+      data: cart,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =========================
+// CHAINED VERSION — used in wishlist's move-to-cart route
+// Stores result in res.locals, calls next() so the next
+// middleware (removeWishlistItem) can send the final response
+// =========================
+exports.addProductToCartChained = async (req, res, next) => {
+  try {
+    const cart = await addProductToCartCore(req);
+    res.locals.cart = cart;
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 // @desc   Get logged users cart

@@ -5,7 +5,7 @@ const {
   getLoggedUserWishlist,
   removeWishlistItem,
 } = require("../controllers/wishlist.controller");
-const { addProductToCart } = require("../controllers/cart.controller");
+const { addProductToCartChained } = require("../controllers/cart.controller");
 const {
   addProductToWishlistValidator,
   removeWishlistItemValidator,
@@ -27,6 +27,6 @@ router
 
 router
   .route("/:productId/move-to-cart")
-  .post(moveToCartValidator, addProductToCart, removeWishlistItem);
+  .post(moveToCartValidator, addProductToCartChained, removeWishlistItem);
 
 module.exports = router;

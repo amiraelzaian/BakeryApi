@@ -22,6 +22,8 @@ const orderRoute = require("./routes/order.route");
 const wishlistRoute = require("./routes/wishlist.route");
 const reviewRoute = require("./routes/review.route");
 const auditRoute = require("./routes/auditLog.route");
+const seasonalRoute = require("./routes/seasonalOffer.route");
+
 const { kashierWebhook } = require("./controllers/order.controller");
 
 //db connection
@@ -61,6 +63,7 @@ app.use("/api/v1/orders", orderRoute);
 app.use("/api/v1/wishlist", wishlistRoute);
 app.use("/api/v1/reviews", reviewRoute);
 app.use("/api/v1/audit-logs", auditRoute);
+app.use("/api/v1/seasonal-offers", seasonalRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

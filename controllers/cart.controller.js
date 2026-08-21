@@ -2,6 +2,7 @@ const ApiError = require("../utils/apiError");
 const Cart = require("../models/cart.model.js");
 const Product = require("../models/product.model.js");
 const Coupon = require("../models/coupon.model.js");
+const getActiveOffersForProducts = require("./seasonalOffer.controller.js");
 
 // calculate total price
 const calcTotalPrice = (cart) => {
@@ -17,9 +18,11 @@ const calcTotalPrice = (cart) => {
   return totalPrice;
 };
 
-// @desc   add product to cart
-// @route  POST /api/v1/cart
-// @access protected/customer
+/** 
+ @ desc   add product to cart
+ @ route  POST /api/v1/cart
+ @ access protected/customer
+ **/
 exports.addProductToCart = async (req, res, next) => {
   const productId = req.params.productId || req.body.productId;
   const { size } = req.body;
@@ -68,6 +71,22 @@ exports.addProductToCart = async (req, res, next) => {
     if (product.price === null || product.price === undefined) {
       return next(new ApiError("Product price is not configured", 400));
     }
+  }
+
+  // check the offer
+  const offersCoveringThisProduct = await getActiveOffersForProducts(
+    [product._id],
+    [product.categoryId],
+  );
+
+  if (offersCoveringThisProduct.length > 0) {
+    const offer = offersCoveringThisProduct[0];
+    const discountPercentage = offer.discountPercentage;
+
+    selectedPrice =
+      Math.round(
+        (selectedPrice - (selectedPrice * discountPercentage) / 100) * 100,
+      ) / 100;
   }
 
   // 4- Get cart for logged user

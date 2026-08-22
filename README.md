@@ -178,7 +178,6 @@ The guiding rule for phase order: **build what makes the business function first
 - Seasonal offers
 - Admin dashboard & business statistics (sales over time, best-selling products, order volume, etc.)
 - Audit logs for administrative actions
-- Notifications (order status changes, promotions)
 
 **Why this scope:** Every one of these features assumes Phases 1 and 2 already work correctly. A coupon is meaningless without a working checkout; a dashboard is meaningless without real order history to analyze.
 
@@ -190,6 +189,7 @@ Ideas worth exploring once the core product is solid, listed here so they're not
 
 - Loyalty points system
 - Gift cards
+- Notifications (order status changes, promotions)
 - Product recommendations
 - Real-time order tracking (live status updates, not just polling)
 - Email and SMS notifications

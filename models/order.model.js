@@ -142,11 +142,6 @@ const orderSchema = new mongoose.Schema(
       default: "cash",
     },
 
-    // isPaid: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
     paidAt: {
       type: Date,
       default: null,

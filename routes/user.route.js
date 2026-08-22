@@ -18,6 +18,7 @@ const {
   deleteUserValidator,
   changeUserPasswordValidator,
 } = require("../validators/user.validator");
+const { logAction } = require("../middlewares/logAction");
 const { protect, allowedTo } = require("../controllers/auth.controller");
 
 const router = express.Router();
@@ -29,7 +30,14 @@ router.route("/activation").patch(updateUserValidator, reverseUserActivation);
 
 router
   .route("/")
-  .post(allowedTo("admin"), createUserValidator, createUser)
+  .post(
+    allowedTo("admin"),
+    createUserValidator,
+    logAction("CREATE_USER", "User", (req) => ({
+      changes: req.body,
+    })),
+    createUser,
+  )
   .get(allowedTo("admin"), getAllUsers);
 
 router
@@ -39,8 +47,18 @@ router
     getUserValidator,
     getUser,
   )
-  .patch(allowedTo("admin", "customer"), updateUserValidator, updateUser)
-  .delete(allowedTo("admin"), deleteUserValidator, deleteUser);
+  .patch(
+    allowedTo("admin", "customer"),
+    updateUserValidator,
+    logAction("UPDATE_USER", "USER"),
+    updateUser,
+  )
+  .delete(
+    allowedTo("admin"),
+    deleteUserValidator,
+    logAction("DELETE_USER", "User"),
+    deleteUser,
+  );
 
 router
   .route("/change-user-pass/:id")

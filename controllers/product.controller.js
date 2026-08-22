@@ -3,7 +3,7 @@ const ApiError = require("../utils/apiError");
 const factory = require("./factory");
 const { redisClient } = require("../redis.js");
 const ApiFeatures = require("../utils/apiFeatures.js");
-
+const { attachOfferPricing } = require("./seasonalOffer.controller.js");
 // =========================
 // INVALIDATE PRODUCT CACHE
 // =========================
@@ -39,7 +39,17 @@ exports.createProduct = factory.createOne(Product, {
 // GET ONE
 // =========================
 
-exports.getProduct = factory.getOne(Product);
+exports.getProduct = async (req, res, next) => {
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return next(new ApiError("Product not found", 404));
+  }
+
+  const productWithPricing = await attachOfferPricing(product);
+
+  res.status(200).json({ status: "success", data: productWithPricing });
+};
 
 // =========================
 // UPDATE
@@ -83,7 +93,11 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
   const docsCount = await Product.countDocuments(baseFilter);
 
   // 4. Create ApiFeatures
-  const apiFeatures = new ApiFeatures(Product.find(), req.query, baseFilter)
+  const apiFeatures = new ApiFeatures(
+    Product.find().populate("categoryId", "name"),
+    req.query,
+    baseFilter,
+  )
     .paginate(docsCount)
     .filter()
     .search("Product")
@@ -93,11 +107,13 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
   // 5. Execute query
   const products = await apiFeatures.mongooseQuery;
 
+  const productsWithPricing = await attachOfferPricing(products);
+
   // 6. Create response
   const response = {
     results: products.length,
     page: apiFeatures.paginationResult,
-    data: products,
+    data: productsWithPricing,
   };
 
   // 7. Store in Redis
@@ -128,3 +144,5 @@ exports.getAllProducts = (req, res, next) => {
 exports.getAllProductsAdmin = (req, res, next) => {
   return getProducts(req, res, next, {});
 };
+
+exports.invalidateProductsCache = invalidateProductsCache;

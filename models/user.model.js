@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "User name is required"],
+      required: [true, "User name is required"],
       trim: true,
     },
     email: {
@@ -22,13 +22,6 @@ const userSchema = new mongoose.Schema(
         return this.provider === "local";
       },
     },
-    // passwordChangedAt: Date,
-    // passwordResetCode: String,
-    // passwordResetExpires: Date,
-    // passwordResetVerified: {
-    //   type: Boolean,
-    //   default: false,
-    // },
     provider: {
       type: String,
       enum: ["local", "google"],
@@ -37,7 +30,7 @@ const userSchema = new mongoose.Schema(
     googleId: {
       type: String,
       unique: true,
-      sparse: true, //allows multipe docs with null google id
+      sparse: true,
     },
     role: {
       type: String,
@@ -55,6 +48,10 @@ const userSchema = new mongoose.Schema(
       zipCode: String,
     },
     avatarUrl: {
+      type: String,
+      default: null,
+    },
+    imagePublicId: {
       type: String,
       default: null,
     },

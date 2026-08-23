@@ -59,17 +59,21 @@ exports.getLoggedUserData = async (req, res, next) => {
 // @route  Patch /api/v1/users/updateMe
 // @access Private/Protected
 exports.updateLoggedUserData = async (req, res, next) => {
-  const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      address: req.body.address,
-      avatarUrl: req.body.avatarUrl,
-    },
-    { new: true },
-  );
+  const updateBody = {
+    name: req.body.name,
+    email: req.body.email,
+    phone: req.body.phone,
+    address: req.body.address,
+  };
+
+  if (req.file) {
+    updateBody.avatarUrl = req.file.path;
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(req.user._id, updateBody, {
+    new: true,
+  });
+
   if (!updatedUser) {
     return next(new ApiError("Error: could not find user to update", 404));
   }

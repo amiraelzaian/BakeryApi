@@ -20,12 +20,34 @@ const {
 } = require("../validators/user.validator");
 const { logAction } = require("../middlewares/logAction");
 const { protect, allowedTo } = require("../controllers/auth.controller");
+const createUploader = require("../middlewares/uploadImage");
+const deleteOldImage = require("../middlewares/deleteOldImage");
+const deleteImageOnRemove = require("../middlewares/deleteImageOnRemove");
+const { setImageUrlToBody } = require("../middlewares/setImagesToBody");
+const User = require("../models/user.model");
 
 const router = express.Router();
+
+const uploadAvatar = createUploader("avatars"); // متظبط مرة واحدة
+
 router.use(protect);
+
 router.route("/getMe").get(getLoggedUserData, getUser);
-router.route("/updateMe").patch(updateUserValidator, updateLoggedUserData);
-router.route("/deleteMe").delete(deleteLoggedUserData);
+
+router
+  .route("/updateMe")
+  .patch(
+    uploadAvatar.single("avatar"),
+    deleteOldImage(User),
+    setImageUrlToBody("avatarUrl", "avatarPublicId"),
+    updateUserValidator,
+    updateLoggedUserData,
+  );
+
+router
+  .route("/deleteMe")
+  .delete(deleteImageOnRemove(User), deleteLoggedUserData);
+
 router.route("/activation").patch(updateUserValidator, reverseUserActivation);
 
 router
@@ -49,6 +71,9 @@ router
   )
   .patch(
     allowedTo("admin", "customer"),
+    uploadAvatar.single("avatar"),
+    deleteOldImage(User),
+    setImageUrlToBody("avatarUrl", "avatarPublicId"),
     updateUserValidator,
     logAction("UPDATE_USER", "USER"),
     updateUser,
@@ -56,6 +81,7 @@ router
   .delete(
     allowedTo("admin"),
     deleteUserValidator,
+    deleteImageOnRemove(User),
     logAction("DELETE_USER", "User"),
     deleteUser,
   );

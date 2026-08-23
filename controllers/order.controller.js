@@ -7,8 +7,7 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 const axios = require("axios");
 const FailedOrder = require("../models/failedOrders.model");
-const queryString = require("query-string"); // npm install query-string
-const _ = require("underscore"); // npm install underscore
+
 const PendingOrder = require("../models/pendingOrder.model");
 
 exports.createOrder = async (req, res, next) => {

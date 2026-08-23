@@ -28,10 +28,8 @@
     "nodemailer": "^9.0.4",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "query-string": "^9.5.0",
     "redis": "^6.2.0",
-    "stripe": "^22.5.0",
-    "underscore": "^1.13.8"
+    "stripe": "^22.5.0"
   },
   "devDependencies": {
     "morgan": "^1.11.0",

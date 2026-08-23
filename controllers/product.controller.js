@@ -40,7 +40,10 @@ exports.createProduct = factory.createOne(Product, {
 // =========================
 
 exports.getProduct = async (req, res, next) => {
-  const product = await Product.findById(req.params.id);
+  const product = await Product.findById(req.params.id).populate(
+    "categoryId",
+    "name description",
+  );
 
   if (!product) {
     return next(new ApiError("Product not found", 404));

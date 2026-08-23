@@ -24,9 +24,6 @@ const reviewRoute = require("./routes/review.route");
 const auditRoute = require("./routes/auditLog.route");
 const seasonalRoute = require("./routes/seasonalOffer.route");
 const dashboardRoute = require("./routes/dashboard.route");
-const uploadRoute = require("./routes/upload");
-
-const cloudinary = require("./config/cloudinary");
 
 const { kashierWebhook } = require("./controllers/order.controller");
 
@@ -69,7 +66,6 @@ app.use("/api/v1/reviews", reviewRoute);
 app.use("/api/v1/audit-logs", auditRoute);
 app.use("/api/v1/seasonal-offers", seasonalRoute);
 app.use("/api/v1/admin-dashboard", dashboardRoute);
-app.use("/api/v1/upload", uploadRoute);
 
 // not found routes
 app.all("*all", (req, res, next) => {

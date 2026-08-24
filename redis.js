@@ -28,9 +28,14 @@ async function connectRedis() {
   }
 }
 
+async function ensureRedisConnected() {
+  if (!redisClient.isOpen) {
+    await connectRedis();
+  }
+}
+
 module.exports = {
   redisClient,
   connectRedis,
+  ensureRedisConnected,
 };
-
-// redis cash

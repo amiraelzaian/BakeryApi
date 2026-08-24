@@ -1,7 +1,7 @@
 const Product = require("../models/product.model");
 const ApiError = require("../utils/apiError");
 const factory = require("./factory");
-const { redisClient } = require("../redis.js");
+const { redisClient, ensureRedisConnected } = require("../redis.js");
 const ApiFeatures = require("../utils/apiFeatures.js");
 const { attachOfferPricing } = require("./seasonalOffer.controller.js");
 // =========================
@@ -75,6 +75,7 @@ exports.deleteProduct = factory.deleteOne(Product, {
 // =========================
 
 const getProducts = async (req, res, next, baseFilter = {}) => {
+  await ensureRedisConnected();
   // 1. Create cache key
   const cacheKey = `products:${JSON.stringify({
     baseFilter,

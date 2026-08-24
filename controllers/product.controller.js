@@ -75,15 +75,19 @@ exports.deleteProduct = factory.deleteOne(Product, {
 // =========================
 
 const getProducts = async (req, res, next, baseFilter = {}) => {
-  await ensureRedisConnected();
-  // 1. Create cache key
   const cacheKey = `products:${JSON.stringify({
     baseFilter,
     query: req.query,
   })}`;
 
-  // 2. Check Redis
-  const cachedProducts = await redisClient.get(cacheKey);
+  // 1. حاولي تقري من الـ cache - لو فشلت، كملي عادي من غير ما توقفي
+  let cachedProducts = null;
+  try {
+    await ensureRedisConnected();
+    cachedProducts = await redisClient.get(cacheKey);
+  } catch (err) {
+    console.error("Redis read failed, continuing without cache:", err.message);
+  }
 
   if (cachedProducts) {
     return res.status(200).json({
@@ -93,10 +97,10 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
     });
   }
 
-  // 3. Count documents
+  // 2. Count documents
   const docsCount = await Product.countDocuments(baseFilter);
 
-  // 4. Create ApiFeatures
+  // 3. Create ApiFeatures
   const apiFeatures = new ApiFeatures(
     Product.find().populate("categoryId", "name"),
     req.query,
@@ -108,31 +112,38 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
     .limitFields()
     .sort();
 
-  // 5. Execute query
+  // 4. Execute query
   const products = await apiFeatures.mongooseQuery;
 
   const productsWithPricing = await attachOfferPricing(products);
 
-  // 6. Create response
+  // 5. Create response
   const response = {
     results: products.length,
     page: apiFeatures.paginationResult,
     data: productsWithPricing,
   };
 
-  // 7. Store in Redis
-  await redisClient.set(cacheKey, JSON.stringify(response), {
-    EX: 3600,
-  });
+  // 6. حاولي تخزني في الـ cache - لو فشلت، متوقفيش الـ response
+  try {
+    await ensureRedisConnected();
+    await redisClient.set(cacheKey, JSON.stringify(response), {
+      EX: 3600,
+    });
+  } catch (err) {
+    console.error(
+      "Redis write failed, response sent without caching:",
+      err.message,
+    );
+  }
 
-  // 8. Send response
+  // 7. Send response
   res.status(200).json({
     status: "success",
     source: "database",
     ...response,
   });
 };
-
 // =========================
 // CUSTOMER PRODUCTS
 // =========================

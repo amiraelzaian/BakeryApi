@@ -22,6 +22,7 @@
 const nodemailer = require("nodemailer");
 
 const sendEmail = async (options) => {
+  console.log("sendEmail called with:", options.email);
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: Number(process.env.EMAIL_PORT),

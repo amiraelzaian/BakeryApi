@@ -224,7 +224,7 @@ exports.googleLogin = async (req, res, next) => {
       email,
       googleId,
       profileImg: picture,
-      proivder: "google",
+      provider: "google",
     });
   }
 

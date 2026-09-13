@@ -8,6 +8,9 @@ const sendEmail = require("../utils/sendEmail");
 const { OAuth2Client } = require("google-auth-library");
 const { redisClient } = require("../redis");
 
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // @desc   Signnup
 // @route  post /api/v1/auth/signup
 // @access Public

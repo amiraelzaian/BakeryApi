@@ -24,10 +24,10 @@ router.route("/login").post(loginValidator, login);
 router.route("/google").post(googleLogin);
 router
   .route("/forgotPassword")
-  .post(protect, forgotPasswordLimiter, forgotPassword);
+  .post( forgotPasswordLimiter, forgotPassword);
 router
   .route("/verifyPassword")
-  .post(protect, verifyResetCodeLimiter, verifyResetcode);
-router.route("/resetPassword").post(protect, resetPassword);
+  .post( verifyResetCodeLimiter, verifyResetcode);
+router.route("/resetPassword").post( resetPassword);
 
 module.exports = router;

@@ -29,8 +29,12 @@ const calcTotalPrice = (cart) => {
 // =========================
 const addProductToCartCore = async (req) => {
   const productId = req.params.productId || req.body.productId;
-  const { size } = req.body;
+  const { size,quantity=1 } = req.body;
 
+    if (quantity < 1) {
+    throw new ApiError("Quantity must be at least 1", 400);
+  }
+  
   // 1- Get product
   const product = await Product.findById(productId);
 
@@ -88,6 +92,9 @@ const addProductToCartCore = async (req) => {
   let cart = await Cart.findOne({ userId: req.user._id });
 
   if (!cart) {
+     if (quantity > product.stockQuantity) {
+      throw new ApiError("Cannot add more than available stock", 400);
+    }
     cart = await Cart.create({
       userId: req.user._id,
       cartItems: [
@@ -95,7 +102,7 @@ const addProductToCartCore = async (req) => {
           productId: product._id,
           size: size || undefined,
           price: selectedPrice,
-          quantity: 1,
+          quantity,
         },
       ],
     });
@@ -106,18 +113,21 @@ const addProductToCartCore = async (req) => {
 
     if (productIndex > -1) {
       const cartItem = cart.cartItems[productIndex];
+      const newQuantity = cartItem.quantity + quantity;
 
-      if (cartItem.quantity >= product.stockQuantity) {
+      if (newQuantity > product.stockQuantity) {
         throw new ApiError("Cannot add more than available stock", 400);
       }
-
-      cartItem.quantity += 1;
+      cartItem.quantity = newQuantity;
     } else {
+      if (quantity > product.stockQuantity) {
+        throw new ApiError("Cannot add more than available stock", 400);
+      }
       cart.cartItems.push({
         productId: product._id,
         size: size || undefined,
         price: selectedPrice,
-        quantity: 1,
+        quantity,
       });
     }
   }

@@ -34,7 +34,7 @@ exports.addUserIdToFilter = async (req, res, next) => {
 
 exports.getAllReviews = factory.getAll(Review, {
     path: "user",
-    select: "name",
+    select: "_id name imageUrl",
   });
 
 exports.updateReview = async (req, res, next) => {

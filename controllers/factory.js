@@ -45,19 +45,19 @@ exports.createOne =
 //   });
 // };
 
-// exports.getOne = (Model) => async (req, res, next) => {
-//   const document = await Model.findById(req.params.id, {
-//     __v: false,
-//     password: false,
-//   });
-//   if (!document) {
-//     return next(
-//       new ApiError(`Could not get document for ${req.params.id} id`, 404),
-//     );
-//   }
+exports.getOne = (Model) => async (req, res, next) => {
+  const document = await Model.findById(req.params.id, {
+    __v: false,
+    password: false,
+  });
+  if (!document) {
+    return next(
+      new ApiError(`Could not get document for ${req.params.id} id`, 404),
+    );
+  }
 
-//   res.status(200).json({ status: "success", data: document });
-// };
+  res.status(200).json({ status: "success", data: document });
+};
 
 
 exports.getAll = (Model, populateOptions = []) => async (req, res, next) => {

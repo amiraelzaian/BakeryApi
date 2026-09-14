@@ -32,10 +32,10 @@ exports.addUserIdToFilter = async (req, res, next) => {
   next();
 };
 
-exports.getAllReviews = factory.getAll(Review, {
+exports.getAllReviews = factory.getAll(Review, [{
     path: "user",
     select: "name",
-  });
+  }]);
 
 exports.updateReview = async (req, res, next) => {
   const review = await Review.findOneAndUpdate(

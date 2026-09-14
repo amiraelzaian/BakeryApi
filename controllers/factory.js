@@ -15,29 +15,85 @@ exports.createOne =
     res.status(200).json({ status: "success", data: document });
   };
 
-exports.getAll = (Model,populateOptions=[]) => async (req, res, next) => {
+// exports.getAll = (Model,populateOptions=[]) => async (req, res, next) => {
+//   let filter = {};
+//   if (req.filterObj) {
+//     filter = req.filterObj;
+//   }
+
+//   const docsCount = await Model.countDocuments();
+//   let apiFeatures = new ApiFeatures(Model.find(filter), req.query)
+//     .paginate(docsCount)
+//     .filter()
+//     .search(Model.modelName)
+//     .limitFields()
+//     .sort();
+//  if (populateOptions.length) {
+//       populateOptions.forEach((populate) => {
+//         query = query.populate(populate);
+//       });
+//     }
+//   const documents = await apiFeatures.mongooseQuery;
+//   if (!documents)
+//     return next(
+//       new ApiError(`Could not get documents for ${Model} model`, 404),
+//     );
+//   res.status(200).json({
+//     results: documents.length,
+//     page: apiFeatures.paginationResult,
+//     data: documents,
+//   });
+// };
+
+// exports.getOne = (Model) => async (req, res, next) => {
+//   const document = await Model.findById(req.params.id, {
+//     __v: false,
+//     password: false,
+//   });
+//   if (!document) {
+//     return next(
+//       new ApiError(`Could not get document for ${req.params.id} id`, 404),
+//     );
+//   }
+
+//   res.status(200).json({ status: "success", data: document });
+// };
+
+
+exports.getAll = (Model, populateOptions = []) => async (req, res, next) => {
   let filter = {};
+
   if (req.filterObj) {
     filter = req.filterObj;
   }
 
-  const docsCount = await Model.countDocuments();
-  let apiFeatures = new ApiFeatures(Model.find(filter), req.query)
+  const docsCount = await Model.countDocuments(filter);
+
+  // Create mongoose query
+  let mongooseQuery = Model.find(filter);
+
+  // Populate if requested
+  if (populateOptions.length) {
+    populateOptions.forEach((populate) => {
+      mongooseQuery = mongooseQuery.populate(populate);
+    });
+  }
+
+  const apiFeatures = new ApiFeatures(mongooseQuery, req.query)
     .paginate(docsCount)
     .filter()
     .search(Model.modelName)
     .limitFields()
     .sort();
- if (populateOptions.length) {
-      populateOptions.forEach((populate) => {
-        query = query.populate(populate);
-      });
-    }
+
   const documents = await apiFeatures.mongooseQuery;
-  if (!documents)
+
+  if (!documents) {
     return next(
-      new ApiError(`Could not get documents for ${Model} model`, 404),
+      new ApiError(`Could not get documents for ${Model} model`, 404)
     );
+  }
+
   res.status(200).json({
     results: documents.length,
     page: apiFeatures.paginationResult,
@@ -45,19 +101,6 @@ exports.getAll = (Model,populateOptions=[]) => async (req, res, next) => {
   });
 };
 
-exports.getOne = (Model) => async (req, res, next) => {
-  const document = await Model.findById(req.params.id, {
-    __v: false,
-    password: false,
-  });
-  if (!document) {
-    return next(
-      new ApiError(`Could not get document for ${req.params.id} id`, 404),
-    );
-  }
-
-  res.status(200).json({ status: "success", data: document });
-};
 
 exports.updateOne =
   (Model, options = {}) =>

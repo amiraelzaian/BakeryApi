@@ -15,7 +15,7 @@ exports.createOne =
     res.status(200).json({ status: "success", data: document });
   };
 
-exports.getAll = (Model) => async (req, res, next) => {
+exports.getAll = (Model,populateOptions=[]) => async (req, res, next) => {
   let filter = {};
   if (req.filterObj) {
     filter = req.filterObj;
@@ -28,7 +28,11 @@ exports.getAll = (Model) => async (req, res, next) => {
     .search(Model.modelName)
     .limitFields()
     .sort();
-
+ if (populateOptions.length) {
+      populateOptions.forEach((populate) => {
+        query = query.populate(populate);
+      });
+    }
   const documents = await apiFeatures.mongooseQuery;
   if (!documents)
     return next(

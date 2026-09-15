@@ -70,11 +70,11 @@ const createKashierCheckout = async (req, res, next) => {
         currency: "EGP",
         order: merchantOrderId,
         merchantId: process.env.KASHIER_MERCHANT_ID,
-        merchantRedirect: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-callback`,
+        merchantRedirect: `${process.env.APP_BASE_URL}/api/v1/orders/kashier-callback,
         display: "en",
         type: "one-time",
         allowedMethods: "card",
-        serverWebhook: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-webhook`,
+        serverWebhook: `${process.env.APP_BASE_URL}/api/v1/orders/kashier-webhook`,
         customer: {
           email: req.user.email,
           reference: req.user._id.toString(),

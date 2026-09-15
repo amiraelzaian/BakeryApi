@@ -327,7 +327,7 @@ const refundKashierPayment = async (
  * @route  POST /api/v1/orders
  * @access Protected/Customer
  */
-exports.createCashOrder = async (req, res, next) => {
+const createCashOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {

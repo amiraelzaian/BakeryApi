@@ -70,7 +70,7 @@ const createKashierCheckout = async (req, res, next) => {
         currency: "EGP",
         order: merchantOrderId,
         merchantId: process.env.KASHIER_MERCHANT_ID,
-        merchantRedirect: `${process.env.FRONT_URL}/api/v1/orders/payment-status`,
+        merchantRedirect: `${process.env.FRONT_URL}/orders/payment-status`,
         display: "en",
         type: "one-time",
         allowedMethods: "card",

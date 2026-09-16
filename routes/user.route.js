@@ -88,6 +88,6 @@ router
 
 router
   .route("/change-user-pass/:id")
-  .patch(allowedTo("admin"), changeUserPasswordValidator, changeUserPassword);
+  .patch( changeUserPasswordValidator, changeUserPassword);
 
 module.exports = router;

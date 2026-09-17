@@ -1,19 +1,25 @@
 const nodemailer = require("nodemailer");
-const dns = require("dns");
+const dns = require("dns").promises;
 
 const sendEmail = async (options) => {
   console.log("sendEmail called with:", options.email);
 
+  // Resolve the SMTP host to an IPv4 address manually
+  const addresses = await dns.resolve4(process.env.EMAIL_HOST);
+  const ipv4Address = addresses[0];
+
+  console.log("Resolved", process.env.EMAIL_HOST, "to IPv4:", ipv4Address);
+
   const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
+    host: ipv4Address, 
     port: Number(process.env.EMAIL_PORT),
     secure: Number(process.env.EMAIL_PORT) === 465,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    lookup: (hostname, opts, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
+    tls: {
+      servername: process.env.EMAIL_HOST, 
     },
   });
 

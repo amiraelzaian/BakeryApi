@@ -7,7 +7,7 @@ const sendEmail = async (options) => {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "Bakery App <process.env.EMAIL_USER>", 
+      from: "Bakery App <onboarding@resend.dev>",
       to: options.email,
       subject: options.subject,
       html: options.message,

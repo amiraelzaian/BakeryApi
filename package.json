@@ -32,7 +32,7 @@
     "passport-google-oauth20": "^2.0.0",
     "redis": "^6.2.0",
     "stripe": "^22.5.0",
-    "resend": "^4.0.0",
+    "resend": "^4.0.0"
   },
   "devDependencies": {
     "morgan": "^1.11.0",

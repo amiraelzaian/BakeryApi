@@ -23,9 +23,9 @@ const router = express.Router();
 
 router.route("/signup").post(signupValidator, signup);
 router.route("/login").post(loginValidator, login);
-router.route("/stuff/login").post(loginValidator, staffLogin );
+router.route("/staff/login").post(loginValidator, staffLogin );
 router.route("/google").post(googleLogin);
-router.route("/stuff/google").post(staffGoogleLogin );
+router.route("/staff/google").post(staffGoogleLogin );
 router
   .route("/forgotPassword")
   .post( forgotPasswordLimiter, forgotPassword);

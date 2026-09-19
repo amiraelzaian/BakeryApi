@@ -88,7 +88,7 @@ router
     protect,
     allowedTo("baker"),
     addBakerIdFilter,
-    getBakerOrdersValidator,
+  
     getBakerOrders,
   );
 
@@ -120,7 +120,7 @@ router
     protect,
     allowedTo("delivery"),
     addDeliveryIdFilter,
-    getDeliveryOrdersValidator,
+
     getDeliveryOrders,
   );
 

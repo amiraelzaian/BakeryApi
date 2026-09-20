@@ -4,6 +4,23 @@ const factory = require("./factory");
 const { redisClient, ensureRedisConnected } = require("../redis.js");
 const ApiFeatures = require("../utils/apiFeatures.js");
 const { attachOfferPricing } = require("./seasonalOffer.controller.js");
+
+
+// parse the sizes to convert it to array as forntend send it as string
+exports.parseProductSizes = (req, res, next) => {
+  if (typeof req.body.sizes === "string") {
+    try {
+      req.body.sizes = JSON.parse(req.body.sizes);
+    } catch (err) {
+      return res.status(400).json({
+        errors: [{ msg: "Sizes must be valid JSON", path: "sizes", location: "body" }],
+      });
+    }
+  }
+  next();
+};
+
+
 // =========================
 // INVALIDATE PRODUCT CACHE
 // =========================

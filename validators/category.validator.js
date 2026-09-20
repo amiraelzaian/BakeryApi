@@ -51,8 +51,8 @@ exports.updateCategoryValidator = [
     .custom(async (val) => {
       const category = await Category.findOne({ name: val });
 
-      if (category) {
-        throw new Error("This category name already exists");
+      if (!category) {
+        throw new Error("This category is not found");
       }
 
       return true;

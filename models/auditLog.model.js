@@ -24,6 +24,7 @@ const AuditLogSchema = new mongoose.Schema(
         "DELETE_USER",
         "CREATE_COUPON",
         "UPDATE_COUPON",
+        "DELETE_COUPON",
         "CREATE_SEASONAL_OFFER",
         "UPDATE_SEASONAL_OFFER",
         "DELETE_SEASONAL_OFFER",

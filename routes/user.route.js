@@ -56,7 +56,7 @@ router
     allowedTo("admin"),
     createUserValidator,
     logAction("CREATE_USER", "User", (req) => ({
-      changes: {name:req.name,email:req.email,phone:req.phone,role:req.role},
+      changes: {name:req.body.name,email:req.body.email,phone:req.body.phone,role:req.body.role},
     })),
     createUser,
   )

@@ -22,6 +22,7 @@ const {
   deleteProduct,
   getAllProducts,
   getAllProductsAdmin,
+   parseProductSizes, 
 } = require("../controllers/product.controller");
 const {
   createReview,
@@ -57,7 +58,7 @@ router
 
 router
   .route("/:productId/reviews")
-  .post(protect, allowedTo("customer"), createReviewValidator, createReview)
+  .post(protect, allowedTo("customer"),  parseProductSizes, createReviewValidator, createReview)
   .get(addProductIdToFilter, getAllReviewsOnProductValidator, getAllReviews);
 
 router.route("/admin").get(protect, allowedTo("admin"), getAllProductsAdmin);
@@ -71,6 +72,7 @@ router
     uploadProductImage.single("productImage"),
     deleteOldImage(Product, "imagePublicId"),
     setImageUrlToBody("imageUrl", "imagePublicId"),
+     parseProductSizes, 
     updateProductValidator,
     logAction("UPDATE_PRODUCT", "Product", (req) => ({
       changes: req.body,

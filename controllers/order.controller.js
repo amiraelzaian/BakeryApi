@@ -697,7 +697,9 @@ exports.addDeliveryIdFilter = async (req, res, next) => {
  * @route  GET /api/v1/orders/delivery-orders/:deliveryId
  * @access Protected/Admin/delivery
  */
-exports.getDeliveryOrders = factory.getAll(Order);
+exports.getDeliveryOrders = factory.getAll(Order,[
+  {path:"user",select:"name email phone"}
+  ]);
 
 /**
  * @desc   Mark order as preparing

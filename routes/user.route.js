@@ -28,7 +28,7 @@ const User = require("../models/user.model");
 
 const router = express.Router();
 
-const uploadAvatar = createUploader("avatars"); // متظبط مرة واحدة
+const uploadAvatar = createUploader("avatars");
 
 router.use(protect);
 
@@ -56,7 +56,7 @@ router
     allowedTo("admin"),
     createUserValidator,
     logAction("CREATE_USER", "User", (req) => ({
-      changes: req.body,
+      changes: {name:req.name,email:req.email,phone:req.phone,role:req.role},
     })),
     createUser,
   )

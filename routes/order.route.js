@@ -22,6 +22,7 @@ const {
   getFailedOrders,
   getRefundedOrders,
   getOrderCreationFailures,
+  addOrderSearchFilter,
 } = require("../controllers/order.controller");
 
 const {
@@ -67,7 +68,7 @@ router
 // ADMIN
 // =========================
 
-router.route("/").get(protect, allowedTo("admin"), getAllOrders);
+router.route("/").get(protect, allowedTo("admin"),addOrderSearchFilter, getAllOrders);
 
 router
   .route("/:id/accept")

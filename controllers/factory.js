@@ -45,14 +45,23 @@ exports.createOne =
 //   });
 // };
 
-exports.getOne = (Model) => async (req, res, next) => {
-  const document = await Model.findById(req.params.id, {
+exports.getOne = (Model, populateOptions = []) => async (req, res, next) => {
+  let mongooseQuery = Model.findById(req.params.id, {
     __v: false,
     password: false,
   });
+
+  if (populateOptions.length) {
+    populateOptions.forEach((populate) => {
+      mongooseQuery = mongooseQuery.populate(populate);
+    });
+  }
+
+  const document = await mongooseQuery;
+
   if (!document) {
     return next(
-      new ApiError(`Could not get document for ${req.params.id} id`, 404),
+      new ApiError(`Could not get document for ${req.params.id} id`, 404)
     );
   }
 

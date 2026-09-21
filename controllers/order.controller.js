@@ -514,14 +514,9 @@ exports.getSpecificOrder = async (req, res, next) => {
  const order = await Order.findOne({
   _id: req.params.id,
 }).populate([
-  {
-    path: "assignedBakerId",
-    select: "name phone",
-  },
-  {
-    path: "assignedDeliveryId",
-    select: "name phone",
-  },
+  { path: "user", select: "name phone" },
+  { path: "assignedBakerId", select: "name phone" },
+  { path: "assignedDeliveryId", select: "name phone" },
 ]);
 
   if (!order) {

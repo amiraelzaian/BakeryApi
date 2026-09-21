@@ -512,7 +512,6 @@ exports.getMyOrders = async (req, res, next) => {
  */
 exports.getSpecificOrder = async (req, res, next) => {
  const order = await Order.findOne({
-  user: req.user._id,
   _id: req.params.id,
 }).populate([
   {

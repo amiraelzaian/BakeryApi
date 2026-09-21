@@ -86,7 +86,7 @@ router
   .route("/my-baker-orders")
   .get(
     protect,
-    allowedTo("baker"),
+    allowedTo("baker",'admin'),
     addBakerIdFilter,
   
     getBakerOrders,
@@ -118,7 +118,7 @@ router
   .route("/my-deliveries")
   .get(
     protect,
-    allowedTo("delivery"),
+    allowedTo("delivery",'amdin'),
     addDeliveryIdFilter,
 
     getDeliveryOrders,

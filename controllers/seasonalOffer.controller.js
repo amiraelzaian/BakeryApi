@@ -6,7 +6,10 @@ exports.createSeasonalOffer = factory.createOne(SeasonalOffer, {
   invalidateCache: invalidateProductsCache,
 });
 
-exports.getSeasonalOffer = factory.getOne(SeasonalOffer);
+exports.getSeasonalOffer = factory.getOne(SeasonalOffer,[
+  { path: "category", select: "name" },
+  { path: "products", select: "name price image" },
+]);
 
 exports.getAllSeasonalOffers = factory.getAll(SeasonalOffer);
 

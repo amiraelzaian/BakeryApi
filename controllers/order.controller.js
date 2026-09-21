@@ -892,3 +892,31 @@ exports.markOrderPickedUp = async (req, res, next) => {
 
   res.status(200).json({ status: "success", data: order });
 };
+
+
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+exports.addOrderSearchFilter = (req, res, next) => {
+  const { orderId, status } = req.query;
+  const filterObj = { ...req.filterObj };
+
+  // partial match on the ObjectId (converted to string first)
+  if (typeof orderId === "string" && orderId.trim()) {
+    filterObj.$expr = {
+      $regexMatch: {
+        input: { $toString: "$_id" },
+        regex: escapeRegex(orderId.trim()),
+        options: "i",
+      },
+    };
+  }
+
+  // server-side status filter, so counts and pagination stay correct
+  if (typeof status === "string" && status) {
+    filterObj.status = status;
+  }
+
+  req.filterObj = filterObj;
+  next();
+};

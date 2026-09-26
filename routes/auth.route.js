@@ -11,6 +11,8 @@ const {
   verifyResetcode,
   resetPassword,
   googleLogin,
+  staffGoogleLogin ,
+  staffLogin ,
 } = require("../controllers/auth.controller");
 const {
   forgotPasswordLimiter,
@@ -21,13 +23,15 @@ const router = express.Router();
 
 router.route("/signup").post(signupValidator, signup);
 router.route("/login").post(loginValidator, login);
+router.route("/staff/login").post(loginValidator, staffLogin );
 router.route("/google").post(googleLogin);
+router.route("/staff/google").post(staffGoogleLogin );
 router
   .route("/forgotPassword")
-  .post(protect, forgotPasswordLimiter, forgotPassword);
+  .post( forgotPasswordLimiter, forgotPassword);
 router
   .route("/verifyPassword")
-  .post(protect, verifyResetCodeLimiter, verifyResetcode);
-router.route("/resetPassword").post(protect, resetPassword);
+  .post( verifyResetCodeLimiter, verifyResetcode);
+router.route("/resetPassword").post( resetPassword);
 
 module.exports = router;

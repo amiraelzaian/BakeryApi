@@ -4,6 +4,23 @@ const factory = require("./factory");
 const { redisClient, ensureRedisConnected } = require("../redis.js");
 const ApiFeatures = require("../utils/apiFeatures.js");
 const { attachOfferPricing } = require("./seasonalOffer.controller.js");
+
+
+// parse the sizes to convert it to array as forntend send it as string
+exports.parseProductSizes = (req, res, next) => {
+  if (typeof req.body.sizes === "string") {
+    try {
+      req.body.sizes = JSON.parse(req.body.sizes);
+    } catch (err) {
+      return res.status(400).json({
+        errors: [{ msg: "Sizes must be valid JSON", path: "sizes", location: "body" }],
+      });
+    }
+  }
+  next();
+};
+
+
 // =========================
 // INVALIDATE PRODUCT CACHE
 // =========================
@@ -73,14 +90,12 @@ exports.deleteProduct = factory.deleteOne(Product, {
 // =========================
 // GET PRODUCTS
 // =========================
-
 const getProducts = async (req, res, next, baseFilter = {}) => {
   const cacheKey = `products:${JSON.stringify({
     baseFilter,
     query: req.query,
   })}`;
 
-  // 1. حاولي تقري من الـ cache - لو فشلت، كملي عادي من غير ما توقفي
   let cachedProducts = null;
   try {
     await ensureRedisConnected();
@@ -97,34 +112,33 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
     });
   }
 
-  // 2. Count documents
-  const docsCount = await Product.countDocuments(baseFilter);
-
-  // 3. Create ApiFeatures
+  // 1. Build the query WITH filter + search first, no pagination yet
   const apiFeatures = new ApiFeatures(
     Product.find().populate("categoryId", "name"),
     req.query,
     baseFilter,
   )
-    .paginate(docsCount)
     .filter()
-    .search("Product")
-    .limitFields()
-    .sort();
+    .search("Product");
 
-  // 4. Execute query
+  // 2. Count against the actual merged filter (base + query filters + search)
+  const docsCount = await Product.countDocuments(
+    apiFeatures.mongooseQuery.getFilter(),
+  );
+
+  // 3. Now paginate using the correct count, then finish the pipeline
+  apiFeatures.paginate(docsCount).limitFields().sort();
+
   const products = await apiFeatures.mongooseQuery;
 
   const productsWithPricing = await attachOfferPricing(products);
 
-  // 5. Create response
   const response = {
     results: products.length,
     page: apiFeatures.paginationResult,
     data: productsWithPricing,
   };
 
-  // 6. حاولي تخزني في الـ cache - لو فشلت، متوقفيش الـ response
   try {
     await ensureRedisConnected();
     await redisClient.set(cacheKey, JSON.stringify(response), {
@@ -137,16 +151,13 @@ const getProducts = async (req, res, next, baseFilter = {}) => {
     );
   }
 
-  // 7. Send response
   res.status(200).json({
     status: "success",
     source: "database",
     ...response,
   });
 };
-// =========================
-// CUSTOMER PRODUCTS
-// =========================
+
 
 exports.getAllProducts = (req, res, next) => {
   return getProducts(req, res, next, { isAvailable: true });

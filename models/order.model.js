@@ -127,7 +127,7 @@ const orderSchema = new mongoose.Schema(
     },
     kashierTransactionId: {
       type: String,
-      default: null,
+     
       unique: true,
       sparse: true,
     },

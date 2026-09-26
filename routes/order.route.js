@@ -22,6 +22,7 @@ const {
   getFailedOrders,
   getRefundedOrders,
   getOrderCreationFailures,
+  addOrderSearchFilter,
 } = require("../controllers/order.controller");
 
 const {
@@ -67,7 +68,7 @@ router
 // ADMIN
 // =========================
 
-router.route("/").get(protect, allowedTo("admin"), getAllOrders);
+router.route("/").get(protect, allowedTo("admin"),addOrderSearchFilter, getAllOrders);
 
 router
   .route("/:id/accept")
@@ -86,9 +87,9 @@ router
   .route("/my-baker-orders")
   .get(
     protect,
-    allowedTo("baker"),
+    allowedTo("baker",'admin'),
     addBakerIdFilter,
-    getBakerOrdersValidator,
+  
     getBakerOrders,
   );
 
@@ -118,9 +119,9 @@ router
   .route("/my-deliveries")
   .get(
     protect,
-    allowedTo("delivery"),
+    allowedTo("delivery",'amdin'),
     addDeliveryIdFilter,
-    getDeliveryOrdersValidator,
+
     getDeliveryOrders,
   );
 

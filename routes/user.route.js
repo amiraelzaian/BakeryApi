@@ -28,7 +28,7 @@ const User = require("../models/user.model");
 
 const router = express.Router();
 
-const uploadAvatar = createUploader("avatars"); // متظبط مرة واحدة
+const uploadAvatar = createUploader("avatars");
 
 router.use(protect);
 
@@ -56,7 +56,7 @@ router
     allowedTo("admin"),
     createUserValidator,
     logAction("CREATE_USER", "User", (req) => ({
-      changes: req.body,
+      changes: {name:req.body.name,email:req.body.email,phone:req.body.phone,role:req.body.role},
     })),
     createUser,
   )
@@ -88,6 +88,6 @@ router
 
 router
   .route("/change-user-pass/:id")
-  .patch(allowedTo("admin"), changeUserPasswordValidator, changeUserPassword);
+  .patch( changeUserPasswordValidator, changeUserPassword);
 
 module.exports = router;

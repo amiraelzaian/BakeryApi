@@ -8,6 +8,9 @@ const sendEmail = require("../utils/sendEmail");
 const { OAuth2Client } = require("google-auth-library");
 const { redisClient } = require("../redis");
 
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // @desc   Signnup
 // @route  post /api/v1/auth/signup
 // @access Public
@@ -34,6 +37,30 @@ exports.login = async (req, res, next) => {
     return next(new ApiError("Incorrect credential", 401));
   }
 
+  const isCorrectPassword = await bcrypt.compare(req.body.password, user.password);
+
+  if (!isCorrectPassword) {
+    return next(new ApiError("Incorrect credential", 401));
+  }
+
+  if (user.role !== 'customer') {
+    return next(new ApiError("This is Customer module, You are not authorized", 403));
+  }
+
+  const token = generateToken(user._id);
+  res.status(200).json({ status: "success", data: user, token });
+};
+
+// @desc   Staff login
+// @route  POST /api/v1/auth/staff/login
+// @access Public
+exports.staffLogin = async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    return next(new ApiError("Incorrect credential", 401));
+  }
+
   const isCorrectPassword = await bcrypt.compare(
     req.body.password,
     user.password,
@@ -41,6 +68,10 @@ exports.login = async (req, res, next) => {
 
   if (!isCorrectPassword) {
     return next(new ApiError("Incorrect credential", 401));
+  }
+
+  if (user.role === 'customer') {
+    return next(new ApiError("This is Staff module, You are not authorized", 403));
   }
 
   const token = generateToken(user._id);
@@ -51,6 +82,41 @@ exports.login = async (req, res, next) => {
     token,
   });
 };
+
+// @desc   Staff login by google
+// @route  POST /api/v1/auth/staff/google
+// @access Public
+exports.staffGoogleLogin = async (req, res, next) => {
+  const { credential } = req.body;
+
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  const { email } = payload;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new ApiError("No staff account found with this email", 404));
+  }
+
+  if (user.role === 'customer') {
+    return next(new ApiError("This is Staff module, You are not authorized", 403));
+  }
+
+  const token = generateToken(user._id);
+
+  res.status(200).json({
+    status: "success",
+    data: user,
+    token,
+  });
+};
+
+
 // @desc make sure the user is logged in
 exports.protect = async (req, res, next) => {
   //1- check if token exists, if yes hold it
@@ -80,7 +146,7 @@ exports.protect = async (req, res, next) => {
     );
     // pass chnaged after token generated
 
-    if (passwordChangedTimeStamp > docoded.iat)
+    if (passwordChangedTimeStamp > decoded.iat)
       return next(
         new ApiError(
           "User has changed account credintial recently, login again",
@@ -91,6 +157,7 @@ exports.protect = async (req, res, next) => {
   req.user = currentUser;
   next();
 };
+
 //@desc user permissions (user autherization)
 exports.allowedTo =
   (...roles) =>
@@ -99,105 +166,9 @@ exports.allowedTo =
       return next(new ApiError("This job is out of your permissioins", 403));
     next();
   };
-// @desc   forgot password
-// @route  post /api/v1/auth/forgotPassword
-// @access Public
-// exports.forgotPassword = async (req, res, next) => {
-//   //1- get user by email
-//   const user = await User.findOne({ email: req.body.email });
-//   if (!user) {
-//     return next(
-//       new ApiError(`There is no user with that email ${req.body.email}`, 404),
-//     );
-//   }
-//   //2- if user exists, gnerate hashed reset random 6 digists save it in db
-//   const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-//   const hashedResetCode = crypto
-//     .createHash("sha256")
-//     .update(resetCode)
-//     .digest("hex");
-//   // save hashed password reset code in DB
-//   user.passwordResetCode = hashedResetCode;
-//   user.passwordResetExpires = Date.now() + 15 * 60 * 1000;
-//   user.passwordResetVerified = false;
-//   await user.save();
 
-//   //3- send the reset code via email
-//   const message = `
-//     <h2>Hello ${user.name}</h2>
-//     <p>We received a request to reset your password.</p>
-//     <h1>${resetCode}</h1>
-//     <p>This code is valid for <strong>15 minutes</strong>.</p>
-//     <p>If you didn't request a password reset, you can ignore this email.</p>
-//     <p>Bakery Team</p>
-//     `;
-//   try {
-//     await sendEmail({
-//       email: user.email,
-//       subject: "Your password reset code (valid for 15 minutes)",
-//       message,
-//     });
-//   } catch (err) {
-//     console.error(err);
 
-//     user.passwordResetCode = undefined;
-//     user.passwordResetExpires = undefined;
-//     user.passwordResetVerified = undefined;
-//     await user.save({ validateBeforeSave: false });
 
-//     return next(new ApiError("Something went wrong while sending email", 500));
-//   }
-//   res.status(200).json({
-//     status: "success",
-//     message: "Reset code has been sent to your email, check your inbox",
-//   });
-// };
-// // @desc   Verify reset code
-// // @route  post /api/v1/auth/verifyResetcode
-// // @access Public
-// exports.verifyResetcode = async (req, res, next) => {
-//   //1- Get user based on reet code
-//   const hashedResetCode = crypto
-//     .createHash("sha256")
-//     .update(req.body.resetCode)
-//     .digest("hex");
-
-//   const user = await User.findOne({
-//     passwordResetCode: hashedResetCode,
-//     passwordResetExpires: { $gt: Date.now() },
-//   });
-
-//   if (!user) {
-//     return next(new ApiError("Invalid or expired reset code", 404));
-//   }
-
-//   //2- valid reset code
-//   user.passwordResetVerified = true;
-//   await user.save();
-//   res.status(200).json({ status: "success" });
-// };
-// // @desc   Reset password
-// // @route  post /api/v1/auth/resetPassword
-// // @access Public
-// exports.resetPassword = async (req, res, next) => {
-//   const user = await User.findOne({ email: req.body.email });
-//   if (!user)
-//     return next(new ApiError("There is not user with this email", 404));
-//   if (!user.passwordResetVerified)
-//     return next(
-//       new ApiError("Reset code is not verified, check you email", 400),
-//     );
-
-//   user.password = req.body.newPassword;
-//   user.passwordResetCode = undefined;
-//   user.passwordResetExpires = undefined;
-//   user.passwordResetVerified = false;
-
-//   await user.save();
-//   const token = generateToken(user._id);
-
-//   res.status(200).json({ status: "success", token });
-// };
 // @desc   login by google
 // @route  post /api/v1/auth/googleAuth
 // @access Public
@@ -221,9 +192,11 @@ exports.googleLogin = async (req, res, next) => {
       email,
       googleId,
       profileImg: picture,
-      proivder: "google",
+      provider: "google",
     });
   }
+  if(user.role!=='customer')
+    return next(new ApiError("This is Customer module, You are not autherized", 403))
 
   const token = generateToken(user._id);
 

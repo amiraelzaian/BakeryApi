@@ -70,11 +70,11 @@ const createKashierCheckout = async (req, res, next) => {
         currency: "EGP",
         order: merchantOrderId,
         merchantId: process.env.KASHIER_MERCHANT_ID,
-        merchantRedirect: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-callback`,
+        merchantRedirect: `${process.env.FRONT_URL}/orders/payment-status`,
         display: "en",
         type: "one-time",
         allowedMethods: "card",
-        serverWebhook: `https://praising-genetics-wages.ngrok-free.dev/api/v1/orders/kashier-webhook`,
+        serverWebhook: `${process.env.APP_BASE_URL}/api/v1/orders/kashier-webhook`,
         customer: {
           email: req.user.email,
           reference: req.user._id.toString(),
@@ -327,7 +327,7 @@ const refundKashierPayment = async (
  * @route  POST /api/v1/orders
  * @access Protected/Customer
  */
-exports.createCashOrder = async (req, res, next) => {
+const createCashOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
 
   try {
@@ -511,10 +511,13 @@ exports.getMyOrders = async (req, res, next) => {
  * @access Protected/Customer
  */
 exports.getSpecificOrder = async (req, res, next) => {
-  const order = await Order.findOne({
-    user: req.user._id,
-    _id: req.params.id,
-  });
+ const order = await Order.findOne({
+  _id: req.params.id,
+}).populate([
+  { path: "user", select: "name phone" },
+  { path: "assignedBakerId", select: "name phone" },
+  { path: "assignedDeliveryId", select: "name phone" },
+]);
 
   if (!order) {
     return next(new ApiError("This order is not found", 404));
@@ -688,7 +691,9 @@ exports.addDeliveryIdFilter = async (req, res, next) => {
  * @route  GET /api/v1/orders/delivery-orders/:deliveryId
  * @access Protected/Admin/delivery
  */
-exports.getDeliveryOrders = factory.getAll(Order);
+exports.getDeliveryOrders = factory.getAll(Order,[
+  {path:"user",select:"name email phone"}
+  ]);
 
 /**
  * @desc   Mark order as preparing
@@ -881,4 +886,32 @@ exports.markOrderPickedUp = async (req, res, next) => {
   await order.save();
 
   res.status(200).json({ status: "success", data: order });
+};
+
+
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+exports.addOrderSearchFilter = (req, res, next) => {
+  const { orderId, status } = req.query;
+  const filterObj = { ...req.filterObj };
+
+  // partial match on the ObjectId (converted to string first)
+  if (typeof orderId === "string" && orderId.trim()) {
+    filterObj.$expr = {
+      $regexMatch: {
+        input: { $toString: "$_id" },
+        regex: escapeRegex(orderId.trim()),
+        options: "i",
+      },
+    };
+  }
+
+  // server-side status filter, so counts and pagination stay correct
+  if (typeof status === "string" && status) {
+    filterObj.status = status;
+  }
+
+  req.filterObj = filterObj;
+  next();
 };

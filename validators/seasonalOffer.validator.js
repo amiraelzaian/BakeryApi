@@ -45,7 +45,7 @@ exports.createSeasonalOfferValidator = [
     }),
 
   check("products")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isArray()
     .withMessage("Products must be an array")
     .custom(async (products) => {
@@ -63,7 +63,7 @@ exports.createSeasonalOfferValidator = [
     .withMessage("Invalid product id format"),
 
   check("category")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage("Invalid category id format")
     .custom(async (categoryId) => {
@@ -123,7 +123,7 @@ exports.updateSeasonalOfferValidator = [
     }),
 
   check("products")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isArray()
     .withMessage("Products must be an array")
     .custom(async (products) => {
@@ -141,7 +141,7 @@ exports.updateSeasonalOfferValidator = [
     .withMessage("Invalid product id format"),
 
   check("category")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage("Invalid category id format")
     .custom(async (categoryId) => {

@@ -116,7 +116,7 @@ exports.getDeliveryOrdersValidator = [
     .notEmpty()
     .withMessage("The delivery id is required")
     .isMongoId()
-    .withMessage("Invalid baker id"),
+    .withMessage("Invalid delivery id"),
 
   validatorMiddleware,
 ];

@@ -1,22 +1,28 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (options) => {
-  const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  console.log("sendEmail called with:", options.email);
 
-  await transporter.sendMail({
-    from: `"Bakery App" <${process.env.EMAIL_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    html: options.message,
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "Bakery App <onboarding@resend.dev>",
+      to: options.email,
+      subject: options.subject,
+      html: options.message,
+    });
+
+    if (error) {
+      console.error("SEND EMAIL ERROR:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Email sent successfully:", data);
+  } catch (err) {
+    console.error("SEND EMAIL ERROR:", err);
+    throw err;
+  }
 };
 
 module.exports = sendEmail;

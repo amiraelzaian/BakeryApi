@@ -1,16 +1,9 @@
+const router = require("express").Router();
+const rateLimit = require("express-rate-limit"); 
+const optionalAuth = require("../middlewares/optionalAuth");
+const { sendMessage } = require("../controllers/chat.controller");
 
-const express=require('express')
-const chatConroller=require('../controllers/chat.controller');
-const {protect,allowedTo}=require('../controllers/auth.controller')
+const chatLimiter = rateLimit({ windowMs: 60 * 1000, limit: 15 });
 
-
-const router=express.Router();
-
-router.post('/',protect,allowedTo('customer'),chatConroller.sendMessage)
-
-
-
-
-
-
-module.exports=router
+router.post("/", chatLimiter, optionalAuth, sendMessage);
+module.exports = router;

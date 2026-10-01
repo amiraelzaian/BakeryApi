@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 const { OAuth2Client } = require("google-auth-library");
-const { redisClient } = require("../redis");
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -140,19 +139,10 @@ exports.protect = async (req, res, next) => {
     );
   //4- check if user change his password after token generated
   if (currentUser?.passwordChangedAt) {
-    const passwordChangedTimeStamp = parseInt(
-      currentUser.passwordChangedAt.getTime() / 100,
-      10,
-    );
-    // pass chnaged after token generated
-
-    if (passwordChangedTimeStamp > decoded.iat)
-      return next(
-        new ApiError(
-          "User has changed account credintial recently, login again",
-          401,
-        ),
-      );
+        const changedAt = Math.floor(currentUser.passwordChangedAt.getTime() / 1000);
+      if (changedAt > decoded.iat) {
+        return next(new ApiError("User has changed account credential recently, login again", 401));
+      }
   }
   req.user = currentUser;
   next();
@@ -207,37 +197,28 @@ exports.googleLogin = async (req, res, next) => {
   });
 };
 
-// @desc   Forgot password
-// @route  POST /api/v1/auth/forgotPassword
-// @access Public
-exports.forgotPassword = async (req, res, next) => {
-  // 1- Get user by email
-  const user = await User.findOne({ email: req.body.email });
+const { redisClient, ensureRedisConnected } = require("../redis");
 
+const resetKey = (email) => `resetCode:${email}`;
+const verifiedKey = (email) => `resetVerified:${email}`;
+const hashCode = (code) => crypto.createHash("sha256").update(code).digest("hex");
+
+// @route POST /api/v1/auth/forgotPassword
+exports.forgotPassword = async (req, res, next) => {
+  const rawEmail = String(req.body.email || "").trim();
+  const email = rawEmail.toLowerCase();
+
+  const user = await User.findOne({ email: rawEmail });
   if (!user) {
-    return next(
-      new ApiError(`There is no user with that email ${req.body.email}`, 404),
-    );
+    return next(new ApiError(`There is no user with that email ${rawEmail}`, 404));
   }
 
-  // 2- Generate random 6-digit reset code
-  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  await ensureRedisConnected();
 
-  // Hash the reset code
-  const hashedResetCode = crypto
-    .createHash("sha256")
-    .update(resetCode)
-    .digest("hex");
+  const resetCode = crypto.randomInt(100000, 1000000).toString(); // secure random
+  await redisClient.set(resetKey(email), hashCode(resetCode), { EX: 15 * 60 });
+  await redisClient.del(verifiedKey(email));
 
-  // Save hashed reset code in Redis for 15 minutes
-  await redisClient.set(`resetCode:${user.email}`, hashedResetCode, {
-    EX: 15 * 60,
-  });
-
-  // Reset verification status
-  await redisClient.del(`resetVerified:${user.email}`);
-
-  // 3- Send reset code via email
   const message = `
     <h2>Hello ${user.name}</h2>
     <p>We received a request to reset your password.</p>
@@ -254,13 +235,10 @@ exports.forgotPassword = async (req, res, next) => {
       message,
     });
   } catch (err) {
-    console.error(err);
-
-    // Delete reset data from Redis if email fails
-    await redisClient.del(`resetCode:${user.email}`);
-    await redisClient.del(`resetVerified:${user.email}`);
-
-    return next(new ApiError("Something went wrong while sending email", 500));
+    console.error("Reset email failed:", err.message);
+    await redisClient.del(resetKey(email));
+    await redisClient.del(verifiedKey(email));
+    return next(new ApiError("Could not send the email, try again later", 500));
   }
 
   res.status(200).json({
@@ -268,76 +246,53 @@ exports.forgotPassword = async (req, res, next) => {
     message: "Reset code has been sent to your email, check your inbox",
   });
 };
-// @desc   Verify reset code
-// @route  POST /api/v1/auth/verifyResetcode
-// @access Public
+
+// @route POST /api/v1/auth/verifyPassword
 exports.verifyResetcode = async (req, res, next) => {
-  const { email, resetCode } = req.body;
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const resetCode = String(req.body.resetCode || "").trim(); // works even if the frontend sends a number
 
-  // 1- Hash the reset code entered by the user
-  const hashedResetCode = crypto
-    .createHash("sha256")
-    .update(resetCode)
-    .digest("hex");
-
-  // 2- Get stored hashed code from Redis
-  const storedResetCode = await redisClient.get(`resetCode:${email}`);
-
-  // Code doesn't exist or expired
-  if (!storedResetCode) {
-    return next(new ApiError("Invalid or expired reset code", 404));
+  if (!email || !resetCode) {
+    return next(new ApiError("Email and reset code are required", 400));
   }
 
-  // Code doesn't match
-  if (storedResetCode !== hashedResetCode) {
-    return next(new ApiError("Invalid or expired reset code", 404));
+  await ensureRedisConnected();
+
+  const stored = await redisClient.get(resetKey(email));
+  if (!stored || stored !== hashCode(resetCode)) {
+    return next(new ApiError("Invalid or expired reset code", 400));
   }
 
-  // 3- Mark reset code as verified
-  await redisClient.set(`resetVerified:${email}`, "true", {
-    EX: 15 * 60,
-  });
-
-  res.status(200).json({
-    status: "success",
-  });
+  await redisClient.set(verifiedKey(email), "true", { EX: 15 * 60 });
+  res.status(200).json({ status: "success" });
 };
-// @desc   Reset password
-// @route  POST /api/v1/auth/resetPassword
-// @access Public
+
+// @route POST /api/v1/auth/resetPassword
 exports.resetPassword = async (req, res, next) => {
-  const { email, newPassword } = req.body;
+  const rawEmail = String(req.body.email || "").trim();
+  const email = rawEmail.toLowerCase();
+  const { newPassword } = req.body;
 
-  // 1- Get user by email
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return next(new ApiError("There is no user with this email", 404));
+  if (typeof newPassword !== "string" || newPassword.length < 6) {
+    return next(new ApiError("Password must be at least 6 characters", 400));
   }
 
-  // 2- Check if reset code was verified
-  const isVerified = await redisClient.get(`resetVerified:${email}`);
+  await ensureRedisConnected();
 
-  if (isVerified !== "true") {
-    return next(
-      new ApiError("Reset code is not verified, check your email", 400),
-    );
+  const user = await User.findOne({ email: rawEmail });
+  if (!user) return next(new ApiError("There is no user with this email", 404));
+
+  if ((await redisClient.get(verifiedKey(email))) !== "true") {
+    return next(new ApiError("Reset code is not verified, check your email", 400));
   }
 
-  // 3- Update password in MongoDB
   user.password = newPassword;
-
+  user.passwordChangedAt = Date.now() - 1000; // invalidates old tokens
   await user.save();
 
-  // 4- Delete reset data from Redis
-  await redisClient.del(`resetCode:${email}`);
-  await redisClient.del(`resetVerified:${email}`);
+  await redisClient.del(resetKey(email));
+  await redisClient.del(verifiedKey(email));
 
-  // 5- Generate JWT
   const token = generateToken(user._id);
-
-  res.status(200).json({
-    status: "success",
-    token,
-  });
+  res.status(200).json({ status: "success", token });
 };
